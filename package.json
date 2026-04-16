@@ -1,0 +1,17 @@
+{
+  "name": "smart-craw-signal",
+  "version": "1.0.0",
+  "description": "Chat with claude code via Signal",
+  "keywords": [
+    "ai",
+    "llm",
+    "smart-craw"
+  ],
+  "license": "ISC",
+  "author": "Daniel Stahl",
+  "type": "module",
+  "main": "index.ts",
+  "scripts": {
+    "test": "npm run test"
+  }
+}
