@@ -13,5 +13,14 @@
   "main": "index.ts",
   "scripts": {
     "test": "npm run test"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.2.110",
+    "dotenv": "^17.4.2",
+    "signal-sdk": "^0.2.2",
+    "winston": "^3.19.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0"
   }
 }
