@@ -26,7 +26,7 @@ mkdir memory
 ```
 
 ```sh
-docker run -p 8000:8000 \
+docker run \
 -v $(pwd):/app/mounts \
 -v $(pwd)/memory:/home/node/.claude \
 -e ANTHROPIC_BASE_URL=[yourllmurl] \
