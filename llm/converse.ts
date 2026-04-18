@@ -39,10 +39,12 @@ export function instructLlm(
   id: string,
   approvalCb: (toolName: string, input: any) => Promise<PermissionResult>,
   mq: AsyncIterable<SDKUserMessage>,
+  workingDirectory?: string,
 ): Query {
   const q = query({
     prompt: mq,
     options: {
+      cwd: workingDirectory,
       tools: { type: "preset", preset: "claude_code" },
       canUseTool: approvalCb,
       sessionId: id,
