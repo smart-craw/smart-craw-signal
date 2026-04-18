@@ -16,6 +16,40 @@ If you have a Google account you can create a new free phone number.
 
 `./node_modules/signal-sdk/bin/signal-cli -a +1[number] verify [number]`
 
+## Run
+
+Run in a terminal:
+
+```sh
+# create a place for claude to put persistent files
+mkdir memory
+```
+
+```sh
+docker run -p 8000:8000 \
+-v $(pwd):/app/mounts \
+-v $(pwd)/memory:/home/node/.claude \
+-e ANTHROPIC_BASE_URL=[yourllmurl] \
+-e ANTHROPIC_AUTH_TOKEN=[yourauthtoken] \
+-e ANTHROPIC_API_KEY=[yourapikey] \
+-e SIGNAL_BOT_PHONE_NUMBER=[yourbotphonenumber] \
+-e SIGNAL_USER_ADMIN_NUMBER=[yourrealphonenumber] \
+--add-host=host.docker.internal:host-gateway \
+ghcr.io/smart-craw/smart-craw-signal:v0.0.1
+```
+
+Run at startup:
+
+Place your (modified) [service](./service/llm-signal.service) in `/etc/systemd/system`.
+
+Then:
+
+```sh
+systemctl enable llm-signal
+systemctl start llm-signal
+```
+
+
 ## Develop
 
 ### Env variables
