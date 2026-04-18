@@ -8,11 +8,12 @@ import { logger } from "./logging.ts";
 
 const mq = new MessageQueue();
 const aq = new Map<string, (approved: boolean) => void>();
-//is this the right way to handle sessions?
-const sessionId = randomUUID();
+//if no SESSION_ID is defined, then create a new session ever time this app is started
+const sessionId = process.env.SESSION_ID || randomUUID();
 const startThink = process.env.START_THINK_TOKEN || "<think>";
 const endThink = process.env.END_THINK_TOKEN || "</think>";
 const adminNumber = `+1${process.env.SIGNAL_USER_ADMIN_NUMBER}`;
+const workingDirectory = process.env.PWD;
 const commandPrefix = "/";
 const bot = new SignalBot({
   phoneNumber: `+1${process.env.SIGNAL_BOT_PHONE_NUMBER}`,
@@ -23,18 +24,10 @@ const bot = new SignalBot({
   },
 });
 
-// Register a command (eg, if user sends /hello world)
-bot.addCommand({
-  name: "hello",
-  description: "Greet the user",
-  handler: async (message, args) => {
-    const name = args.join(" ") || "friend";
-    return `Hello, ${name}!`;
-  },
-});
-
 const approveCommand = "approve";
 const denyCommand = "deny";
+
+// Register a command "approve".
 bot.addCommand({
   name: approveCommand,
   description: "Approve tool use",
@@ -50,6 +43,8 @@ bot.addCommand({
     return `Approval submitted!`;
   },
 });
+
+// Register a command "deny".
 bot.addCommand({
   name: denyCommand,
   description: "Deny tool use",
@@ -66,7 +61,7 @@ bot.addCommand({
   },
 });
 
-// Listen for any message
+// Listen for any message, but ONLY respond to admin number
 bot.on("message", (msg) => {
   if (msg.source !== adminNumber) {
     console.error(`Unrecognized number ${msg.source}`);
@@ -102,6 +97,7 @@ bot.on("ready", () => {
     sessionId,
     approvalWrapper(sessionId, aq, sendMessage),
     mq,
+    workingDirectory,
   );
   handleLLMResponse(query, onComplete);
 });

@@ -1,0 +1,21 @@
+on: push
+
+jobs:
+  run_server_tests:
+    name: Run server tests
+    runs-on: ubuntu-latest
+    env:
+      NODE_OPTIONS: "--max_old_space_size=4096"
+      VITEST_SEGFAULT_RETRY: "5"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24.1.0"
+      - name: install deps
+        run: |
+          npm ci
+      - name: run typescript check
+        run: npx tsc --noEmit --strict --skipLibCheck
+      - name: run tests
+        run: npm run test -- --coverage .

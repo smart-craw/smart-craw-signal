@@ -26,28 +26,12 @@ export const parseMessage = (
 
 export async function handleLLMResponse(
   query: Query,
-  //id: string,
   onComplete: (fullMessage: string, isError: boolean) => void,
 ) {
-  //let isThinking = false; //default to no thinking
   //need to ensure the app doesn't completely crash if claude errors
   try {
     for await (const msg of query) {
       switch (msg.type) {
-        //"result" always fires, so no need to action "assistant" type
-        /*case "stream_event": {
-          const { event } = msg;
-          if (event.type === "content_block_delta") {
-            if (event.delta.type === "text_delta") {
-              isThinking = streamUtils.detectThinking(
-                event.delta.text,
-                isThinking,
-              );
-              streamUtils.sendMessage(event.delta.text, id, isThinking);
-            }
-          }
-          break;
-          }*/
         case "result": {
           if (msg.subtype === "success") {
             const { result } = msg;
