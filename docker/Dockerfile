@@ -1,5 +1,6 @@
 FROM node:24-alpine
 COPY llm /app/llm/
+COPY signal /app/signal/
 COPY *.json /app/
 COPY *.ts /app/
 RUN apk add --no-cache bash # bash is needed for claude code
