@@ -1,21 +1,16 @@
 [Unit]
-Description=signal wrapper for llm
+Description=signal docker service
+After=docker.service
+Requires=docker.service
 
 [Service]
-Type=simple
-ExecStart= docker run \
--v $(pwd):/app/mounts \
--v $(pwd)/memory:/home/node/.claude \
--e ANTHROPIC_BASE_URL=[yourllmurl] \
--e ANTHROPIC_AUTH_TOKEN=[yourauthtoken] \
--e ANTHROPIC_API_KEY=[yourapikey] \
--e SIGNAL_BOT_PHONE_NUMBER=[yourbotphonenumber] \
--e SIGNAL_USER_ADMIN_NUMBER=[yourrealphonenumber] \
---add-host=host.docker.internal:host-gateway \
-ghcr.io/smart-craw/smart-craw-signal:v0.0.1
-
-Restart=on-failure
-RestartSec=5
+Type=oneshot
+RemainAfterExit=yes
+# see install.sh
+WorkingDirectory=%h/signal/docker
+ExecStartPre=mkdir -p %h/signal/storage
+ExecStart=/usr/bin/docker compose -f docker-compose.yml up --detach
+ExecStop=/usr/bin/docker compose -f docker-compose.yml stop
 
 [Install]
-WantedBy=default.target
+WantedBy=multi-user.target

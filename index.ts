@@ -1,4 +1,4 @@
-import { SignalBot } from "signal-sdk";
+import { SignalBot } from "./signal/bot.ts";
 import "dotenv/config";
 import { MessageQueue } from "./llm/mq.ts";
 import { randomUUID } from "node:crypto";
@@ -14,13 +14,14 @@ const startThink = process.env.START_THINK_TOKEN || "<think>";
 const endThink = process.env.END_THINK_TOKEN || "</think>";
 const adminNumber = `+1${process.env.SIGNAL_USER_ADMIN_NUMBER}`;
 const workingDirectory = process.env.PWD;
+const signalUrl = process.env.SIGNAL_REST_ENDPOINT || "http://localhost:9001";
 const commandPrefix = "/";
 const bot = new SignalBot({
   phoneNumber: `+1${process.env.SIGNAL_BOT_PHONE_NUMBER}`,
-  admins: [adminNumber],
+  recipientNumber: adminNumber,
+  url: signalUrl,
   settings: {
     commandPrefix,
-    logMessages: true,
   },
 });
 
@@ -32,7 +33,7 @@ bot.addCommand({
   name: approveCommand,
   description: "Approve tool use",
   adminOnly: true,
-  handler: async (message, args) => {
+  handler: async () => {
     const resolve = aq.get(sessionId);
     if (resolve) {
       resolve(true); //approved
@@ -49,7 +50,7 @@ bot.addCommand({
   name: denyCommand,
   description: "Deny tool use",
   adminOnly: true,
-  handler: async (message, args) => {
+  handler: async () => {
     const resolve = aq.get(sessionId);
     if (resolve) {
       resolve(false); //denied
@@ -63,31 +64,28 @@ bot.addCommand({
 
 // Listen for any message, but ONLY respond to admin number
 bot.on("message", (msg) => {
-  if (msg.source !== adminNumber) {
-    console.error(`Unrecognized number ${msg.source}`);
+  const sender = msg.source;
+  if (sender !== adminNumber) {
+    console.error(`Unrecognized number ${sender}`);
     return;
   }
-  mq.enqueue(msg.text);
-  logger.info(`Message from ${msg.source}: ${msg.text}`);
+  mq.enqueue(msg.message);
+  logger.info(`Message from ${sender}: ${msg.message}`);
 });
 const sendMessage = (toolName: string, parameters: string) =>
   bot.sendMessage(
-    adminNumber,
     `Approval requested for tool "${toolName}". \n\nParameters: \n${parameters}\n.\n\nText "${commandPrefix}${approveCommand}" to approve or "${commandPrefix}${denyCommand}" to deny.`,
   );
 const onComplete = (fullMessage: string, isError: boolean) => {
   if (isError) {
-    bot.sendMessage(
-      adminNumber,
-      `Bot didn't complete successfully! ${fullMessage}`,
-    );
+    bot.sendMessage(`Bot didn't complete successfully! ${fullMessage}`);
   } else {
     const { reasoning, message } = parseMessage(
       startThink,
       endThink,
       fullMessage,
     );
-    bot.sendMessage(adminNumber, message);
+    bot.sendMessage(message);
     logger.info(`Reasoning: ${reasoning}, Message: ${message}`);
   }
 };
@@ -103,3 +101,7 @@ bot.on("ready", () => {
 });
 
 await bot.start();
+
+process.on("SIGINT", () => {
+  bot.close();
+});
