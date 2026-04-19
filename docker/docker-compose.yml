@@ -1,6 +1,7 @@
-version: "3"
 services:
   signal-cli-rest-api:
+    networks:
+      - signalnetwork
     image: bbernhard/signal-cli-rest-api:latest-rootless-dev
     environment:
       - MODE=json-rpc-native #supported modes: json-rpc, native, normal
@@ -9,7 +10,9 @@ services:
     volumes:
       - "$HOME/.local/share/signal-api:/home/.local/share/signal-cli" #map "signal-cli-config" folder on host system into docker container. the folder contains the password and cryptographic keys when a new number is registered
   smart-craw-signal:
-    image: ghcr.io/smart-craw/smart-craw-signal:v0.0.3
+    networks:
+      - signalnetwork
+    image: ghcr.io/smart-craw/smart-craw-signal:v0.0.4
     volumes:
       - "$HOME/signal/storage:/app/mounts"
       - "$HOME/signal/storage/memory:/home/node/.claude"
@@ -20,3 +23,6 @@ services:
       - SIGNAL_REST_ENDPOINT=http://signal-cli-rest-api:9001
       - START_THINK_TOKEN="<think>"
       - END_THINK_TOKEN="</think>"
+networks:
+  signalnetwork:
+    driver: bridge
