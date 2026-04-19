@@ -25,22 +25,11 @@ Run in a terminal:
 mkdir memory
 ```
 
-```sh
-docker run \
--v $(pwd):/app/mounts \
--v $(pwd)/memory:/home/node/.claude \
--e ANTHROPIC_BASE_URL=[yourllmurl] \
--e ANTHROPIC_AUTH_TOKEN=[yourauthtoken] \
--e ANTHROPIC_API_KEY=[yourapikey] \
--e SIGNAL_BOT_PHONE_NUMBER=[yourbotphonenumber] \
--e SIGNAL_USER_ADMIN_NUMBER=[yourrealphonenumber] \
---add-host=host.docker.internal:host-gateway \
-ghcr.io/smart-craw/smart-craw-signal:v0.0.1
-```
+Modify [docker-compose](./docker/docker-compose.yml) with your relevant [env](#env-variables) variables.  The run `docker compose -f docker-compose.yml up`.
 
 Run at startup:
 
-Place your (modified) [service](./service/llm-signal.service) in `/etc/systemd/system`.
+Put your (modified) [docker-compose](./docker/docker-compose.yml) in `$HOME/signal/docker`.  Place your [service](./service/llm-signal.service) in `/etc/systemd/system`.
 
 Then:
 
@@ -49,15 +38,40 @@ systemctl enable llm-signal
 systemctl start llm-signal
 ```
 
+### Env variables
+
+* ANTHROPIC_BASE_URL (defaults to "http://host.docker.internal:11434", local Ollama)
+* ANTHROPIC_AUTH_TOKEN (defaults to "ollama")
+* ANTHROPIC_API_KEY (defaults to "sk-local-dummy")
+* LOG_LEVEL (defaults to "info")
+* START_THINK_TOKEN (start token for thinking, defaults to "<think>")
+* END_THINK_TOKEN (start token for thinking, defaults to "</think>")
+* SIGNAL_BOT_PHONE_NUMBER (your free phone number from Google)
+* SIGNAL_USER_ADMIN_NUMBER (your actual phone number)
+* SIGNAL_REST_ENDPOINT (endpoint exposed by signal server docker, defaults to http://localhost:9001)
 
 ## Develop
 
+### Run signal server locally
+
+```sh
+docker run  -p 9001:8080 \
+    -v $HOME/.local/share/signal-cli:/home/.local/share/signal-cli \
+    -e MODE=json-rpc-native bbernhard/signal-cli-rest-api:latest-rootless-dev
+```
+
 ### Env variables
 
-Create a .env in the project directory with the following entries"
+Create a .env in the project directory with the following entries
 
 ```sh
 SIGNAL_BOT_PHONE_NUMBER="free_phone_number_you_got_from_google"
 SIGNAL_USER_ADMIN_NUMBER="your_actual_phone_number"
 ANTHROPIC_BASE_URL="URL for your hosted model"
+```
+
+### Run
+
+```sh
+node index.ts
 ```

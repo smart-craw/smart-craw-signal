@@ -28,6 +28,7 @@ ENV LOG_LEVEL="info"
 ENV MODEL="hf.co/Qwen/Qwen3-4B-GGUF:latest"
 ENV SIGNAL_BOT_PHONE_NUMBER="0123456789"
 ENV SIGNAL_USER_ADMIN_NUMBER="9876543210"
+ENV SIGNAL_REST_ENDPOINT="http://localhost:9001"
 # this is arbitrary and can be overwritten.  But does allow a "default" of a single session even after restarting docker
 ENV SESSION_ID="d52f3a42-1fdc-423d-b2ad-e01b50032444"
 # "<|channel>" for gemma

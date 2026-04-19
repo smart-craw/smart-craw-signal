@@ -1,0 +1,22 @@
+version: "3"
+services:
+  signal-cli-rest-api:
+    image: bbernhard/signal-cli-rest-api:latest-rootless-dev
+    environment:
+      - MODE=json-rpc-native #supported modes: json-rpc, native, normal
+    ports:
+      - "9001:8080" #map docker port 9001 to host port 8080.
+    volumes:
+      - "$HOME/.local/share/signal-api:/home/.local/share/signal-cli" #map "signal-cli-config" folder on host system into docker container. the folder contains the password and cryptographic keys when a new number is registered
+  smart-craw-signal:
+    image: ghcr.io/smart-craw/smart-craw-signal:v0.0.3
+    volumes:
+      - "$HOME/signal/storage:/app/mounts"
+      - "$HOME/signal/storage/memory:/home/node/.claude"
+    environment:
+      - ANTHROPIC_BASE_URL=[yoururl]
+      - SIGNAL_BOT_PHONE_NUMBER=[yourbotphonenumber]
+      - SIGNAL_USER_ADMIN_NUMBER=[yourrealphonenumber]
+      - SIGNAL_REST_ENDPOINT=http://signal-cli-rest-api:9001
+      - START_THINK_TOKEN="<think>"
+      - END_THINK_TOKEN="</think>"
