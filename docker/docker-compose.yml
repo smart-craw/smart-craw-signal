@@ -5,10 +5,13 @@ services:
     image: bbernhard/signal-cli-rest-api:latest-rootless-dev
     environment:
       - MODE=json-rpc-native #supported modes: json-rpc, native, normal
-    ports:
-      - "9001:8080" #map docker port 9001 to host port 8080.
     volumes:
       - "$HOME/.local/share/signal-api:/home/.local/share/signal-cli" #map "signal-cli-config" folder on host system into docker container. the folder contains the password and cryptographic keys when a new number is registered
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/v1/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
   smart-craw-signal:
     networks:
       - signalnetwork
@@ -20,9 +23,12 @@ services:
       - ANTHROPIC_BASE_URL=[yoururl]
       - SIGNAL_BOT_PHONE_NUMBER=[yourbotphonenumber]
       - SIGNAL_USER_ADMIN_NUMBER=[yourrealphonenumber]
-      - SIGNAL_REST_ENDPOINT=http://signal-cli-rest-api:9001
+      - SIGNAL_REST_ENDPOINT=http://signal-cli-rest-api:8080
       - START_THINK_TOKEN="<think>"
       - END_THINK_TOKEN="</think>"
+    depends_on:
+      signal-cli-rest-api:
+        condition: service_healthy
 networks:
   signalnetwork:
     driver: bridge
