@@ -16,6 +16,10 @@ const adminNumber = `+1${process.env.SIGNAL_USER_ADMIN_NUMBER}`;
 const workingDirectory = process.env.PWD;
 const signalUrl = process.env.SIGNAL_REST_ENDPOINT || "http://localhost:9001";
 const commandPrefix = "/";
+
+logger.info(`Start think token: ${startThink}, End think Token ${endThink}`);
+logger.info(`API endpoint: ${process.env.ANTHROPIC_BASE_URL}`);
+
 const bot = new SignalBot({
   phoneNumber: `+1${process.env.SIGNAL_BOT_PHONE_NUMBER}`,
   recipientNumber: adminNumber,
