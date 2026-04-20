@@ -29,13 +29,14 @@ Modify [docker-compose](./docker/docker-compose.yml) with your relevant [env](#e
 
 Run at startup:
 
-Put your (modified) [docker-compose](./docker/docker-compose.yml) in `$HOME/signal/docker`.  Place your [service](./service/llm-signal.service) in `/etc/systemd/system`.
+Put your (modified) [docker-compose](./docker/docker-compose.yml) in `$HOME/signal/docker`.  Place your [service](./service/llm-signal.service) in `~/.config/systemd/user/`.
 
 Then:
 
 ```sh
-systemctl enable llm-signal
-systemctl start llm-signal
+systemctl --user enable llm-signal
+systemctl --user start llm-signal
+sudo loginctl enable-linger $USER
 ```
 
 ### Env variables

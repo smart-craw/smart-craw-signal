@@ -21,7 +21,7 @@ RUN npm ci --only=production
 # Switch to the non-root user
 USER node
 # don't manually set PWD...keep this default
-ENV PWD="/app/mounts"
+ENV AGENT_CWD="/app/mounts"
 ENV ANTHROPIC_BASE_URL="http://host.docker.internal:11434"
 ENV ANTHROPIC_AUTH_TOKEN="ollama"
 ENV ANTHROPIC_API_KEY="sk-local-dummy"

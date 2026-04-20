@@ -13,12 +13,13 @@ const sessionId = process.env.SESSION_ID || randomUUID();
 const startThink = process.env.START_THINK_TOKEN || "<think>";
 const endThink = process.env.END_THINK_TOKEN || "</think>";
 const adminNumber = `+1${process.env.SIGNAL_USER_ADMIN_NUMBER}`;
-const workingDirectory = process.env.PWD;
+const workingDirectory = process.env.AGENT_CWD;
 const signalUrl = process.env.SIGNAL_REST_ENDPOINT || "http://localhost:9001";
 const commandPrefix = "/";
 
 logger.info(`Start think token: ${startThink}, End think Token ${endThink}`);
 logger.info(`API endpoint: ${process.env.ANTHROPIC_BASE_URL}`);
+logger.info(`Working directory: ${workingDirectory}`);
 
 const bot = new SignalBot({
   phoneNumber: `+1${process.env.SIGNAL_BOT_PHONE_NUMBER}`,

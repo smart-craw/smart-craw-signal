@@ -1,14 +1,12 @@
 [Unit]
 Description=signal docker service
-After=docker.service
-Requires=docker.service
 
 [Service]
 Type=oneshot
 RemainAfterExit=yes
 # see install.sh
 WorkingDirectory=%h/signal/docker
-ExecStartPre=mkdir -p %h/signal/storage
+ExecStartPre=mkdir -p %h/signal/storage/memory
 ExecStart=/usr/bin/docker compose -f docker-compose.yml up --detach
 ExecStop=/usr/bin/docker compose -f docker-compose.yml stop
 
