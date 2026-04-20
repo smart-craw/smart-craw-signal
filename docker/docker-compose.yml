@@ -15,17 +15,17 @@ services:
   smart-craw-signal:
     networks:
       - signalnetwork
-    image: ghcr.io/smart-craw/smart-craw-signal:v0.0.4
+    image: ghcr.io/smart-craw/smart-craw-signal:v0.0.5
     volumes:
       - "$HOME/signal/storage:/app/mounts"
       - "$HOME/signal/storage/memory:/home/node/.claude"
     environment:
-      - ANTHROPIC_BASE_URL=[yoururl]
-      - SIGNAL_BOT_PHONE_NUMBER=[yourbotphonenumber]
-      - SIGNAL_USER_ADMIN_NUMBER=[yourrealphonenumber]
-      - SIGNAL_REST_ENDPOINT=http://signal-cli-rest-api:8080
-      - START_THINK_TOKEN="<think>"
-      - END_THINK_TOKEN="</think>"
+      ANTHROPIC_BASE_URL: [yoururl]
+      SIGNAL_BOT_PHONE_NUMBER: [yourbotphonenumber]
+      SIGNAL_USER_ADMIN_NUMBER: [yourrealphonenumber]
+      SIGNAL_REST_ENDPOINT: http://signal-cli-rest-api:8080
+      START_THINK_TOKEN: "<think>"
+      END_THINK_TOKEN: "</think>"
     depends_on:
       signal-cli-rest-api:
         condition: service_healthy
