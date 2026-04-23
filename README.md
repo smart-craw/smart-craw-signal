@@ -34,6 +34,7 @@ Put your (modified) [docker-compose](./docker/docker-compose.yml) in `$HOME/sign
 Then:
 
 ```sh
+systemctl --user daemon-reload
 systemctl --user enable llm-signal
 systemctl --user start llm-signal
 sudo loginctl enable-linger $USER
