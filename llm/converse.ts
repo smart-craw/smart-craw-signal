@@ -4,7 +4,6 @@ import {
   type PermissionResult,
   type SDKUserMessage,
   query,
-  McpServerConfig,
 } from "@anthropic-ai/claude-agent-sdk";
 import { logger } from "../logging.ts";
 
