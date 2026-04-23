@@ -101,6 +101,7 @@ bot.on("ready", () => {
     approvalWrapper(sessionId, aq, sendMessage),
     mq,
     workingDirectory,
+    process.env.MCP_CODE_SERVER_ENDPOINT,
   );
   handleLLMResponse(query, onComplete);
 });

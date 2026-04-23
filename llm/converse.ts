@@ -4,6 +4,7 @@ import {
   type PermissionResult,
   type SDKUserMessage,
   query,
+  McpServerConfig,
 } from "@anthropic-ai/claude-agent-sdk";
 import { logger } from "../logging.ts";
 
@@ -40,12 +41,25 @@ export function instructLlm(
   approvalCb: (toolName: string, input: any) => Promise<PermissionResult>,
   mq: AsyncIterable<SDKUserMessage>,
   workingDirectory?: string,
+  mcpCodeUrl?: string,
 ): Query {
+  const mcpSection = mcpCodeUrl
+    ? {
+        mcpServers: {
+          "code-mcp": {
+            type: "sse" as const,
+            url: mcpCodeUrl,
+          },
+        },
+        allowedTools: ["mcp__claude-mcp__*"],
+      }
+    : {};
   const q = query({
     prompt: mq,
     options: {
       cwd: workingDirectory,
       tools: { type: "preset", preset: "claude_code" },
+      ...mcpSection,
       canUseTool: approvalCb,
       sessionId: id,
       hooks: {
