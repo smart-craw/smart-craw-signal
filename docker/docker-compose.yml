@@ -21,7 +21,7 @@ services:
   smart-craw-signal:
     networks:
       - signalnetwork
-    image: ghcr.io/smart-craw/smart-craw-signal:v0.0.6
+    image: ghcr.io/smart-craw/smart-craw-signal:v0.0.7
     volumes:
       - "$HOME/signal/storage:/app/mounts"
       - "$HOME/signal/storage/memory:/home/node/.claude"
