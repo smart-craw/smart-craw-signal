@@ -1,15 +1,15 @@
 import { SignalBot } from "./signal/bot.ts";
 import "dotenv/config";
 import { MessageQueue } from "./llm/mq.ts";
-import { randomUUID } from "node:crypto";
 import { approvalWrapper, instructLlm } from "./llm/converse.ts";
 import { handleLLMResponse, parseMessage } from "./llm/response.ts";
 import { logger } from "./logging.ts";
 
 const mq = new MessageQueue();
 const aq = new Map<string, (approved: boolean) => void>();
-//if no SESSION_ID is defined, then create a new session ever time this app is started
-const sessionId = process.env.SESSION_ID || randomUUID();
+// doesn't matter what approvalId is, just needs to be a
+// "key" to look up pending approval
+const approvalId = "signalsession";
 const startThink = process.env.START_THINK_TOKEN || "<think>";
 const endThink = process.env.END_THINK_TOKEN || "</think>";
 const adminNumber = `+1${process.env.SIGNAL_USER_ADMIN_NUMBER}`;
@@ -41,12 +41,12 @@ bot.addCommand({
   description: "Approve tool use",
   adminOnly: true,
   handler: async () => {
-    const resolve = aq.get(sessionId);
+    const resolve = aq.get(approvalId);
     if (resolve) {
       resolve(true); //approved
-      aq.delete(sessionId);
+      aq.delete(approvalId);
     } else {
-      logger.warn(`No pending approval found for bot id: ${sessionId}`);
+      logger.warn(`No pending approval found!`);
     }
     return `Approval submitted!`;
   },
@@ -58,12 +58,12 @@ bot.addCommand({
   description: "Deny tool use",
   adminOnly: true,
   handler: async () => {
-    const resolve = aq.get(sessionId);
+    const resolve = aq.get(approvalId);
     if (resolve) {
       resolve(false); //denied
-      aq.delete(sessionId);
+      aq.delete(approvalId);
     } else {
-      logger.warn(`No pending approval found for bot id: ${sessionId}`);
+      logger.warn(`No pending approval found!`);
     }
     return `Denial submitted!`;
   },
@@ -99,8 +99,7 @@ const onComplete = (fullMessage: string, isError: boolean) => {
 bot.on("ready", () => {
   logger.info("Bot is running!");
   const query = instructLlm(
-    sessionId,
-    approvalWrapper(sessionId, aq, sendMessage),
+    approvalWrapper(approvalId, aq, sendMessage),
     mq,
     workingDirectory,
     codeMcpEndpoint,
