@@ -21,7 +21,7 @@ services:
   smart-craw-signal:
     networks:
       - signalnetwork
-    image: ghcr.io/smart-craw/smart-craw-signal:v0.0.7
+    image: ghcr.io/smart-craw/smart-craw-signal:v0.0.9
     volumes:
       - "$HOME/signal/storage:/app/mounts"
       - "$HOME/signal/storage/memory:/home/node/.claude"
@@ -30,7 +30,7 @@ services:
       SIGNAL_BOT_PHONE_NUMBER: [yourbotphonenumber]
       SIGNAL_USER_ADMIN_NUMBER: [yourrealphonenumber]
       SIGNAL_REST_ENDPOINT: http://signal-cli-rest-api:8080
-      MCP_CODE_SERVER_ENDPOINT: http://code-mcp:8000
+      MCP_CODE_SERVER_ENDPOINT: http://code-mcp:8000/mcp
       START_THINK_TOKEN: "<think>"
       END_THINK_TOKEN: "</think>"
     depends_on:
