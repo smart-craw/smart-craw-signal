@@ -42,21 +42,36 @@ export function instructLlm(
   workingDirectory?: string,
   mcpCodeUrl?: string,
 ): Query {
+  const codeMcpName = "code-mcp";
   const mcpSection = mcpCodeUrl
     ? {
         mcpServers: {
-          "code-mcp": {
-            type: "sse" as const,
+          [codeMcpName]: {
+            type: "http" as const,
             url: mcpCodeUrl,
+            headers: {
+              Accept: "application/json, text/event-stream",
+            },
           },
         },
-        allowedTools: ["mcp__claude-mcp__*"],
+        allowedTools: [`mcp__${codeMcpName}__*`],
+      }
+    : {};
+  const appendSystemPrompt = mcpCodeUrl
+    ? {
+        append: `Use the ${codeMcpName} tool for any Javascript, Python, or Rust programming`,
       }
     : {};
   const q = query({
     prompt: mq,
     options: {
       cwd: workingDirectory,
+      systemPrompt: {
+        type: "preset",
+        preset: "claude_code",
+        ...appendSystemPrompt,
+      },
+
       tools: { type: "preset", preset: "claude_code" },
       ...mcpSection,
       canUseTool: approvalCb,

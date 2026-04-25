@@ -15,10 +15,12 @@ const endThink = process.env.END_THINK_TOKEN || "</think>";
 const adminNumber = `+1${process.env.SIGNAL_USER_ADMIN_NUMBER}`;
 const workingDirectory = process.env.AGENT_CWD;
 const signalUrl = process.env.SIGNAL_REST_ENDPOINT || "http://localhost:9001";
+const codeMcpEndpoint = process.env.MCP_CODE_SERVER_ENDPOINT;
 const commandPrefix = "/";
 
 logger.info(`Start think token: ${startThink}, End think Token ${endThink}`);
 logger.info(`API endpoint: ${process.env.ANTHROPIC_BASE_URL}`);
+logger.info(`Code MCP endpoint: ${codeMcpEndpoint}`);
 logger.info(`Working directory: ${workingDirectory}`);
 
 const bot = new SignalBot({
@@ -101,7 +103,7 @@ bot.on("ready", () => {
     approvalWrapper(sessionId, aq, sendMessage),
     mq,
     workingDirectory,
-    process.env.MCP_CODE_SERVER_ENDPOINT,
+    codeMcpEndpoint,
   );
   handleLLMResponse(query, onComplete);
 });

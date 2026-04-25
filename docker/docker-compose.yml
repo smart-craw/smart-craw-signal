@@ -30,7 +30,7 @@ services:
       SIGNAL_BOT_PHONE_NUMBER: [yourbotphonenumber]
       SIGNAL_USER_ADMIN_NUMBER: [yourrealphonenumber]
       SIGNAL_REST_ENDPOINT: http://signal-cli-rest-api:8080
-      MCP_CODE_SERVER_ENDPOINT: http://code-mcp:8000
+      MCP_CODE_SERVER_ENDPOINT: http://code-mcp:8000/mcp
       START_THINK_TOKEN: "<think>"
       END_THINK_TOKEN: "</think>"
     depends_on:
