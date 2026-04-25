@@ -14,14 +14,15 @@ services:
       retries: 5
   code-mcp:
     networks:
-      - signalnetwork
-    image: ghcr.io/danielhstahl/mcp-code-execution:v0.0.1
+      - mcp-internal
+    image: ghcr.io/danielhstahl/mcp-code-execution:v0.0.2
     volumes:
       - $HOME/signal/storage:/app/code_location
   smart-craw-signal:
     networks:
       - signalnetwork
-    image: ghcr.io/smart-craw/smart-craw-signal:v0.0.9
+      - mcp-internal
+    image: ghcr.io/smart-craw/smart-craw-signal:v0.0.11
     volumes:
       - "$HOME/signal/storage:/app/mounts"
       - "$HOME/signal/storage/memory:/home/node/.claude"
@@ -39,3 +40,5 @@ services:
 networks:
   signalnetwork:
     driver: bridge
+  mcp-internal:
+    internal: true
