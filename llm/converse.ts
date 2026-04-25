@@ -101,5 +101,14 @@ export function instructLlm(
       },
     },
   });
+  q.initializationResult().then((result) => {
+    logger.info(`Init result: ${JSON.stringify(result, null, 2)}`);
+  });
+  if (mcpCodeUrl) {
+    q.mcpServerStatus().then((status) => {
+      logger.info(`MCP status: ${JSON.stringify(status, null, 2)}`);
+    });
+  }
+
   return q;
 }
