@@ -34,9 +34,9 @@ export const approvalWrapper = (
       : { behavior: "deny", message: "Tool use denied" };
   };
 };
-
+// autogenerates sessionid on first run, then on next run continues last session
+// this works for Signal since its "single threaded" conversation
 export function instructLlm(
-  id: string,
   approvalCb: (toolName: string, input: any) => Promise<PermissionResult>,
   mq: AsyncIterable<SDKUserMessage>,
   workingDirectory?: string,
@@ -71,11 +71,10 @@ export function instructLlm(
         preset: "claude_code",
         ...appendSystemPrompt,
       },
-
       tools: { type: "preset", preset: "claude_code" },
       ...mcpSection,
       canUseTool: approvalCb,
-      sessionId: id,
+      continue: true, //key to having a persistent conversation across runs
       hooks: {
         Notification: [{ hooks: [hookLogs] }],
         PostToolUseFailure: [
