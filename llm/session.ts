@@ -21,7 +21,7 @@ export class SessionManagement {
   constructor() {
     this.mq = new MessageQueue();
     this.isNew = true;
-    this.currentSessionId = randomUUID(); //possibly temporary, can be replaced by loadSessions
+    this.currentSessionId = randomUUID(); //may be overwritten by loadSessions
     this.aq = new Map<
       string, //sessionId
       (approved: boolean) => void
@@ -35,11 +35,8 @@ export class SessionManagement {
   }
   setApprovalResolver() {
     return new Promise<boolean>((resolve) => {
-      console.log("inside set approval resolver");
-      console.log(this.aq);
       this.aq.set(this.currentSessionId, resolve);
     });
-    //return this.aq.set(this.currentSessionId, resolve);
   }
   removeApprovalResolver() {
     this.aq.delete(this.currentSessionId);
@@ -69,6 +66,8 @@ export class SessionManagement {
     if (this.query !== undefined) {
       await this.query.interrupt();
       this.query.close();
+      this.mq.close();
+      this.mq = new MessageQueue();
     }
     this.query = instructLlm(
       this.isNew,
@@ -86,9 +85,6 @@ export class SessionManagement {
       summary,
     }));
   }
-  /*getQuery() {
-    return this.query;
-    }*/
   async loadSessions() {
     const sessions = await listSessions();
     //sort in order from most recently modified to last modified

@@ -87,7 +87,7 @@ bot.addCommand({
 });
 const setQuery = async () => {
   const query = await sessionManager.startSession(
-    approvalWrapper(sessionManager.setApprovalResolver, sendMessage),
+    approvalWrapper(() => sessionManager.setApprovalResolver(), sendMessage),
     workingDirectory,
     codeMcpEndpoint,
   );
