@@ -32,11 +32,6 @@ export async function handleLLMResponse(
   try {
     for await (const msg of query) {
       switch (msg.type) {
-        case "system": {
-          // Ensure we get visibility into any system messages
-          logger.info(`system msg: ${JSON.stringify(msg)}`);
-          break;
-        }
         case "result": {
           if (msg.subtype === "success") {
             const { result } = msg;
