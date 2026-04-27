@@ -6,6 +6,7 @@ import {
   query,
 } from "@anthropic-ai/claude-agent-sdk";
 import { logger } from "../logging.ts";
+import { SYSTEM_PROMPT } from "./prompt.ts";
 
 const hookLogs = async (input: HookInput) => {
   logger.debug(
@@ -58,19 +59,13 @@ export function instructLlm(
       }
     : {};
   const appendSystemPrompt = mcpCodeUrl
-    ? {
-        append: `Use the ${codeMcpName} tool for any Javascript, Python, or Rust programming`,
-      }
-    : {};
+    ? `\n\nUse the ${codeMcpName} tool for any Javascript, Python, or Rust programming`
+    : "";
   const q = query({
     prompt: mq,
     options: {
       cwd: workingDirectory,
-      systemPrompt: {
-        type: "preset",
-        preset: "claude_code",
-        ...appendSystemPrompt,
-      },
+      systemPrompt: SYSTEM_PROMPT + appendSystemPrompt,
       tools: { type: "preset", preset: "claude_code" },
       ...mcpSection,
       canUseTool: approvalCb,
@@ -100,14 +95,5 @@ export function instructLlm(
       },
     },
   });
-  q.initializationResult().then((result) => {
-    logger.info(`Init result: ${JSON.stringify(result, null, 2)}`);
-  });
-  if (mcpCodeUrl) {
-    q.mcpServerStatus().then((status) => {
-      logger.info(`MCP status: ${JSON.stringify(status, null, 2)}`);
-    });
-  }
-
   return q;
 }
