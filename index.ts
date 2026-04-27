@@ -4,12 +4,8 @@ import { MessageQueue } from "./llm/mq.ts";
 import { approvalWrapper, instructLlm } from "./llm/converse.ts";
 import { handleLLMResponse, parseMessage } from "./llm/response.ts";
 import { logger } from "./logging.ts";
+import { SessionManagement } from "./llm/session.ts";
 
-const mq = new MessageQueue();
-const aq = new Map<string, (approved: boolean) => void>();
-// doesn't matter what approvalId is, just needs to be a
-// "key" to look up pending approval
-const approvalId = "signalsession";
 const startThink = process.env.START_THINK_TOKEN || "<think>";
 const endThink = process.env.END_THINK_TOKEN || "</think>";
 const adminNumber = `+1${process.env.SIGNAL_USER_ADMIN_NUMBER}`;
@@ -23,6 +19,8 @@ logger.info(`API endpoint: ${process.env.ANTHROPIC_BASE_URL}`);
 logger.info(`Code MCP endpoint: ${codeMcpEndpoint}`);
 logger.info(`Working directory: ${workingDirectory}`);
 
+const sessionManager = new SessionManagement();
+
 const bot = new SignalBot({
   phoneNumber: `+1${process.env.SIGNAL_BOT_PHONE_NUMBER}`,
   recipientNumber: adminNumber,
@@ -31,9 +29,28 @@ const bot = new SignalBot({
     commandPrefix,
   },
 });
-
+const helpCommand = "help";
 const approveCommand = "approve";
 const denyCommand = "deny";
+const newSessionCommand = "new_session";
+const selectSessionCommand = "select_session";
+const listSessionsCommand = "list_sessions";
+const activeSessionCommand = "current_session";
+
+bot.addCommand({
+  name: helpCommand,
+  description: "Get lists of commands",
+  adminOnly: true,
+  handler: async () => {
+    return bot
+      .getCommands()
+      .reduce<string>(
+        (aggr, { name, description }) =>
+          aggr + `\n${commandPrefix}${name}: ${description}`,
+        "Commands:\n",
+      );
+  },
+});
 
 // Register a command "approve".
 bot.addCommand({
@@ -41,10 +58,10 @@ bot.addCommand({
   description: "Approve tool use",
   adminOnly: true,
   handler: async () => {
-    const resolve = aq.get(approvalId);
+    const resolve = sessionManager.getApprovalResolver(); //aq.get(approvalId);
     if (resolve) {
       resolve(true); //approved
-      aq.delete(approvalId);
+      sessionManager.removeApprovalResolver();
     } else {
       logger.warn(`No pending approval found!`);
     }
@@ -58,14 +75,88 @@ bot.addCommand({
   description: "Deny tool use",
   adminOnly: true,
   handler: async () => {
-    const resolve = aq.get(approvalId);
+    const resolve = sessionManager.getApprovalResolver(); //aq.get(approvalId);
     if (resolve) {
       resolve(false); //denied
-      aq.delete(approvalId);
+      sessionManager.removeApprovalResolver();
     } else {
       logger.warn(`No pending approval found!`);
     }
     return `Denial submitted!`;
+  },
+});
+const setQuery = async () => {
+  const query = await sessionManager.startSession(
+    approvalWrapper(sessionManager.setApprovalResolver, sendMessage),
+    workingDirectory,
+    codeMcpEndpoint,
+  );
+  if (query) {
+    handleLLMResponse(query, onComplete);
+  } else {
+    logger.warn("Query created with start session but it is undefined!");
+  }
+};
+
+// Register a command "newsession".
+bot.addCommand({
+  name: newSessionCommand,
+  description: "Create new session",
+  adminOnly: true,
+  handler: async () => {
+    const sessionId = sessionManager.newSession();
+    await setQuery();
+    return `New session created: ${sessionId}`;
+  },
+});
+
+bot.addCommand({
+  name: listSessionsCommand,
+  description: "List sessions",
+  adminOnly: true,
+  handler: async () => {
+    const sessions = await sessionManager.getSessions();
+    const sessionsMessage = sessions.reduce(
+      (aggr, curr, index) =>
+        aggr +
+        `\nIndex: ${index}\nSession ID: ${curr.sessionId}\nSummary: ${curr.summary}\n------------`,
+      "",
+    );
+    return (
+      sessionsMessage +
+      `\n\nTo select a session use \`${commandPrefix}${selectSessionCommand} {index}\`.`
+    );
+  },
+});
+
+bot.addCommand({
+  name: activeSessionCommand,
+  description: "Get current session id",
+  adminOnly: true,
+  handler: async () => {
+    const sessionId = sessionManager.getSessionId();
+    return `Session ID: ${sessionId}`;
+  },
+});
+
+bot.addCommand({
+  name: selectSessionCommand,
+  description: "Select session",
+  adminOnly: true,
+  handler: async (sessionIndex: string) => {
+    const sessions = await sessionManager.getSessions();
+    try {
+      const index = parseInt(sessionIndex);
+      const { sessionId } = sessions[index];
+      sessionManager.setSessionId(sessionId);
+      await setQuery();
+      return `New session set: ${sessionId}`;
+    } catch (err) {
+      const error = err as Error;
+      const msg = `Error! ${error.name}: ${error.message}`;
+      logger.error(msg);
+      return msg;
+    }
   },
 });
 
@@ -76,7 +167,7 @@ bot.on("message", (msg) => {
     console.error(`Unrecognized number ${sender}`);
     return;
   }
-  mq.enqueue(msg.message);
+  sessionManager.queueMessage(msg.message);
   logger.info(`Message from ${sender}: ${msg.message}`);
 });
 const sendMessage = (toolName: string, parameters: string) =>
@@ -96,18 +187,13 @@ const onComplete = (fullMessage: string, isError: boolean) => {
     logger.info(`Reasoning: ${reasoning}, Message: ${message}`);
   }
 };
-bot.on("ready", () => {
-  logger.info("Bot is running!");
-  const query = instructLlm(
-    approvalWrapper(approvalId, aq, sendMessage),
-    mq,
-    workingDirectory,
-    codeMcpEndpoint,
-  );
-  handleLLMResponse(query, onComplete);
-});
 
-await bot.start();
+bot.on("ready", async () => {
+  logger.info("Bot is running!");
+  await setQuery();
+});
+await sessionManager.loadSessions();
+await bot.start(commandPrefix);
 
 process.on("SIGINT", () => {
   bot.close();

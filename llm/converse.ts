@@ -7,6 +7,7 @@ import {
 } from "@anthropic-ai/claude-agent-sdk";
 import { logger } from "../logging.ts";
 import { SYSTEM_PROMPT } from "./prompt.ts";
+//import { SessionManagement } from "./session.ts";
 
 const hookLogs = async (input: HookInput) => {
   logger.debug(
@@ -16,8 +17,7 @@ const hookLogs = async (input: HookInput) => {
 };
 
 export const approvalWrapper = (
-  id: string,
-  pendingApprovals: Map<string, (approved: boolean) => void>,
+  handleApproval: () => Promise<boolean>,
   sendMessage: (toolName: string, parameters: string) => void,
 ) => {
   return async function customApprovalCallback(
@@ -26,9 +26,10 @@ export const approvalWrapper = (
   ): Promise<PermissionResult> {
     logger.debug("Approval called");
     sendMessage(toolName, JSON.stringify(input, null, 2));
-    const isApproved = await new Promise<boolean>((resolve) => {
+    const isApproved = await handleApproval(); //sessions.setApprovalResolver();
+    /*new Promise<boolean>((resolve) => {
       pendingApprovals.set(id, resolve);
-    });
+      });*/
     logger.debug("Approval decision made", isApproved);
     return isApproved
       ? { behavior: "allow", updatedInput: input }
@@ -38,6 +39,8 @@ export const approvalWrapper = (
 // autogenerates sessionid on first run, then on next run continues last session
 // this works for Signal since its "single threaded" conversation
 export function instructLlm(
+  isNew: boolean,
+  sessionId: string,
   approvalCb: (toolName: string, input: any) => Promise<PermissionResult>,
   mq: AsyncIterable<SDKUserMessage>,
   workingDirectory?: string,
@@ -61,6 +64,13 @@ export function instructLlm(
   const appendSystemPrompt = mcpCodeUrl
     ? `\n\nUse the ${codeMcpName} tool for any Javascript, Python, or Rust programming`
     : "";
+  const sessionConfig = isNew
+    ? {
+        sessionId,
+      }
+    : {
+        resume: sessionId,
+      };
   const q = query({
     prompt: mq,
     options: {
@@ -69,7 +79,7 @@ export function instructLlm(
       tools: { type: "preset", preset: "claude_code" },
       ...mcpSection,
       canUseTool: approvalCb,
-      continue: true, //key to having a persistent conversation across runs
+      ...sessionConfig,
       hooks: {
         Notification: [{ hooks: [hookLogs] }],
         PostToolUseFailure: [
