@@ -1,10 +1,9 @@
 import { SignalBot } from "./signal/bot.ts";
 import "dotenv/config";
-import { MessageQueue } from "./llm/mq.ts";
-import { approvalWrapper, instructLlm } from "./llm/converse.ts";
+import { approvalWrapper } from "./llm/converse.ts";
 import { handleLLMResponse, parseMessage } from "./llm/response.ts";
 import { logger } from "./logging.ts";
-import { SessionManagement } from "./llm/session.ts";
+import { createSessionManager } from "./llm/session.ts";
 
 const startThink = process.env.START_THINK_TOKEN || "<think>";
 const endThink = process.env.END_THINK_TOKEN || "</think>";
@@ -19,7 +18,7 @@ logger.info(`API endpoint: ${process.env.ANTHROPIC_BASE_URL}`);
 logger.info(`Code MCP endpoint: ${codeMcpEndpoint}`);
 logger.info(`Working directory: ${workingDirectory}`);
 
-const sessionManager = new SessionManagement();
+const sessionManager = createSessionManager();
 
 const bot = new SignalBot({
   phoneNumber: `+1${process.env.SIGNAL_BOT_PHONE_NUMBER}`,
@@ -58,7 +57,7 @@ bot.addCommand({
   description: "Approve tool use",
   adminOnly: true,
   handler: async () => {
-    const resolve = sessionManager.getApprovalResolver(); //aq.get(approvalId);
+    const resolve = sessionManager.getApprovalResolver();
     if (resolve) {
       resolve(true); //approved
       sessionManager.removeApprovalResolver();
@@ -75,7 +74,7 @@ bot.addCommand({
   description: "Deny tool use",
   adminOnly: true,
   handler: async () => {
-    const resolve = sessionManager.getApprovalResolver(); //aq.get(approvalId);
+    const resolve = sessionManager.getApprovalResolver();
     if (resolve) {
       resolve(false); //denied
       sessionManager.removeApprovalResolver();
@@ -87,7 +86,7 @@ bot.addCommand({
 });
 const setQuery = async () => {
   const query = await sessionManager.startSession(
-    approvalWrapper(() => sessionManager.setApprovalResolver(), sendMessage),
+    approvalWrapper(sessionManager.setApprovalResolver, sendMessage),
     workingDirectory,
     codeMcpEndpoint,
   );
@@ -124,7 +123,7 @@ bot.addCommand({
     );
     return (
       sessionsMessage +
-      `\n\nTo select a session use \`${commandPrefix}${selectSessionCommand} {index}\`.`
+      `\n\nTo select a session use "${commandPrefix}${selectSessionCommand} {index}".`
     );
   },
 });

@@ -91,7 +91,7 @@ export class SignalBot extends EventEmitter {
     this.signal.receive().startReceiving(this.config.phoneNumber);
     this.hasStarted = true;
     await this.sendMessage(
-      `Signal Bot Started!\n\nBot is now active\nNumber: ${this.config.phoneNumber}\n\nTo view available commands, send \`${commandPrefix}help\`.\n\nHappy chatting!`,
+      `Signal Bot Started!\n\nBot is now active\nNumber: ${this.config.phoneNumber}\n\nTo view available commands, send "${commandPrefix}help".\n\nHappy chatting!`,
     );
     this.emit("ready");
   }

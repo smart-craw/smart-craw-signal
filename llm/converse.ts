@@ -26,10 +26,7 @@ export const approvalWrapper = (
   ): Promise<PermissionResult> {
     logger.debug("Approval called");
     sendMessage(toolName, JSON.stringify(input, null, 2));
-    const isApproved = await handleApproval(); //sessions.setApprovalResolver();
-    /*new Promise<boolean>((resolve) => {
-      pendingApprovals.set(id, resolve);
-      });*/
+    const isApproved = await handleApproval();
     logger.debug("Approval decision made", isApproved);
     return isApproved
       ? { behavior: "allow", updatedInput: input }
@@ -39,7 +36,7 @@ export const approvalWrapper = (
 // autogenerates sessionid on first run, then on next run continues last session
 // this works for Signal since its "single threaded" conversation
 export function instructLlm(
-  isNew: boolean,
+  isNewSession: boolean,
   sessionId: string,
   approvalCb: (toolName: string, input: any) => Promise<PermissionResult>,
   mq: AsyncIterable<SDKUserMessage>,
@@ -64,7 +61,7 @@ export function instructLlm(
   const appendSystemPrompt = mcpCodeUrl
     ? `\n\nUse the ${codeMcpName} tool for any Javascript, Python, or Rust programming`
     : "";
-  const sessionConfig = isNew
+  const sessionConfig = isNewSession
     ? {
         sessionId,
       }

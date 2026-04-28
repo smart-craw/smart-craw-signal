@@ -8,92 +8,104 @@ import { randomUUID } from "node:crypto";
 import { logger } from "../logging.ts";
 import { instructLlm } from "./converse.ts";
 
-export class SessionManagement {
-  private mq: MessageQueue;
-  private query: Query | undefined;
-  private aq: Map<
-    string, //sessionId
-    (approved: boolean) => void
-  >;
-  private currentSessionId: string;
-  private isNew: boolean;
-  private hasLoaded: boolean = false;
-  constructor() {
-    this.mq = new MessageQueue();
-    this.isNew = true;
-    this.currentSessionId = randomUUID(); //may be overwritten by loadSessions
-    this.aq = new Map<
-      string, //sessionId
-      (approved: boolean) => void
-    >();
-  }
-  queueMessage(message: string) {
-    this.mq.enqueue(message);
-  }
-  getApprovalResolver() {
-    return this.aq.get(this.currentSessionId);
-  }
-  setApprovalResolver() {
+export type SessionManager = ReturnType<typeof createSessionManager>;
+
+export const createSessionManager = () => {
+  let mq = new MessageQueue();
+  let query: Query | undefined;
+  const aq = new Map<string, (approved: boolean) => void>();
+  let currentSessionId: string = randomUUID();
+  let isNew = true;
+  let hasLoaded = false;
+
+  const queueMessage = (message: string) => {
+    mq.enqueue(message);
+  };
+
+  const getApprovalResolver = () => {
+    return aq.get(currentSessionId);
+  };
+
+  const setApprovalResolver = () => {
     return new Promise<boolean>((resolve) => {
-      this.aq.set(this.currentSessionId, resolve);
+      aq.set(currentSessionId, resolve);
     });
-  }
-  removeApprovalResolver() {
-    this.aq.delete(this.currentSessionId);
-  }
-  getSessionId() {
-    return this.currentSessionId;
-  }
-  setSessionId(sessionId: string) {
-    this.isNew = false;
-    this.currentSessionId = sessionId;
-    return this.currentSessionId;
-  }
-  newSession() {
-    this.isNew = true;
-    this.currentSessionId = randomUUID();
-    return this.currentSessionId;
-  }
-  async startSession(
+  };
+
+  const removeApprovalResolver = () => {
+    aq.delete(currentSessionId);
+  };
+
+  const getSessionId = () => {
+    return currentSessionId;
+  };
+
+  const setSessionId = (sessionId: string) => {
+    isNew = false;
+    currentSessionId = sessionId;
+    return currentSessionId;
+  };
+
+  const newSession = () => {
+    isNew = true;
+    currentSessionId = randomUUID();
+    return currentSessionId;
+  };
+
+  const startSession = async (
     approvalCb: (toolName: string, input: any) => Promise<PermissionResult>,
     workingDirectory?: string,
     mcpCodeUrl?: string,
-  ) {
-    if (!this.hasLoaded) {
+  ) => {
+    if (!hasLoaded) {
       logger.warn("Cannot start session until after `loadSessions` is called");
       return;
     }
-    if (this.query !== undefined) {
-      await this.query.interrupt();
-      this.query.close();
-      this.mq.close();
-      this.mq = new MessageQueue();
+    if (query !== undefined) {
+      await query.interrupt();
+      query.close();
+      mq.close();
+      mq = new MessageQueue();
     }
-    this.query = instructLlm(
-      this.isNew,
-      this.currentSessionId, //if doesn't already exist, creates a new session.
+    query = instructLlm(
+      isNew,
+      currentSessionId,
       approvalCb,
-      this.mq,
+      mq,
       workingDirectory,
       mcpCodeUrl,
     );
-    return this.query;
-  }
-  async getSessions() {
+    return query;
+  };
+
+  const getSessions = async () => {
     return (await listSessions()).map(({ sessionId, summary }) => ({
       sessionId,
       summary,
     }));
-  }
-  async loadSessions() {
+  };
+
+  const loadSessions = async () => {
     const sessions = await listSessions();
-    //sort in order from most recently modified to last modified
     sessions.sort((a, b) => b.lastModified - a.lastModified);
-    logger.info(`Sessions: ${JSON.stringify(sessions, null, 2)}`);
+    logger.debug(`Sessions: ${JSON.stringify(sessions, null, 2)}`);
     if (sessions.length > 0) {
-      this.currentSessionId = sessions[0].sessionId;
-      this.isNew = false;
+      currentSessionId = sessions[0].sessionId;
+      isNew = false;
     }
-    this.hasLoaded = true;
-  }
-}
+    hasLoaded = true;
+  };
+
+  return {
+    queueMessage,
+    getApprovalResolver,
+    setApprovalResolver,
+    removeApprovalResolver,
+    getSessionId,
+    setSessionId,
+    newSession,
+    startSession,
+    getSessions,
+    loadSessions,
+  };
+};
