@@ -32,7 +32,7 @@ type Command = {
   name: string;
   description: string;
   adminOnly: boolean;
-  handler: () => Promise<string>;
+  handler: (...v: string[]) => Promise<string>;
 };
 type PartialConfig = Pick<
   Config,
@@ -53,6 +53,9 @@ export class SignalBot extends EventEmitter {
   close() {
     this.signal.receive().stopAllReceiving();
   }
+  getCommands() {
+    return this.commands;
+  }
   private register() {
     this.signal.receive().registerHandler(
       this.config.phoneNumber,
@@ -61,11 +64,13 @@ export class SignalBot extends EventEmitter {
         const source = context.rawMessage.envelope.source;
         const { message } = context;
         if (message.startsWith(this.config.settings.commandPrefix)) {
-          const rest = message.substring(1);
-          const command = this.commands.find(({ name }) => name === rest);
+          const [parsedCommand, ...rest] = message.substring(1).split(" ");
+          const command = this.commands.find(
+            ({ name }) => name === parsedCommand,
+          );
           if (command) {
             if (!command.adminOnly || source === this.config.recipientNumber) {
-              const result = await command.handler();
+              const result = await command.handler(...rest);
               await context.reply(result);
             } else {
               await context.reply(
@@ -81,12 +86,12 @@ export class SignalBot extends EventEmitter {
       },
     );
   }
-  async start() {
+  async start(commandPrefix: string) {
     this.register();
     this.signal.receive().startReceiving(this.config.phoneNumber);
     this.hasStarted = true;
     await this.sendMessage(
-      `Signal Bot Started!\n\nBot is now active\nNumber: ${this.config.phoneNumber}\n\nHappy chatting!`,
+      `Signal Bot Started!\n\nBot is now active\nNumber: ${this.config.phoneNumber}\n\nTo view available commands, send "${commandPrefix}help".\n\nHappy chatting!`,
     );
     this.emit("ready");
   }
