@@ -1,4 +1,3 @@
-//import { SignalBot } from process.env.MOCK?"./signal/bot.mock.ts":"./signal/bot.ts";
 async function loadSignalBot() {
   if (process.env.MOCK) {
     const module = await import("./signal/bot.mock.ts");
