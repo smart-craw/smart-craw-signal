@@ -59,7 +59,7 @@ export function instructLlm(
       }
     : {};
   const appendSystemPrompt = mcpCodeUrl
-    ? `\n\nUse the ${codeMcpName} tool for any Javascript, Python, or Rust programming`
+    ? `\n\nUse the ${codeMcpName} tool to run any Javascript, Python, or Rust program`
     : "";
   const sessionConfig = isNewSession
     ? {

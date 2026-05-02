@@ -15,7 +15,7 @@ services:
   code-mcp:
     networks:
       - mcp-internal
-    image: ghcr.io/danielhstahl/mcp-code-execution:v0.0.2
+    image: ghcr.io/danielhstahl/mcp-code-execution:v0.1.2
     volumes:
       - $HOME/signal/storage:/app/code_location
   smart-craw-signal:
