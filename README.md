@@ -77,3 +77,9 @@ ANTHROPIC_BASE_URL="URL for your hosted model"
 ```sh
 node index.ts
 ```
+
+### Run CLI without Signal for debugging
+
+```sh
+MOCK=yes node index.ts
+```
