@@ -1,4 +1,14 @@
-import { SignalBot } from "./signal/bot.ts";
+//import { SignalBot } from process.env.MOCK?"./signal/bot.mock.ts":"./signal/bot.ts";
+async function loadSignalBot() {
+  if (process.env.MOCK) {
+    const module = await import("./signal/bot.mock.ts");
+    return module;
+  } else {
+    const module = await import("./signal/bot.ts");
+    return module;
+  }
+}
+const { SignalBot } = await loadSignalBot();
 import "dotenv/config";
 import { approvalWrapper } from "./llm/converse.ts";
 import { handleLLMResponse, parseMessage } from "./llm/response.ts";
@@ -183,7 +193,7 @@ const onComplete = (fullMessage: string, isError: boolean) => {
       fullMessage,
     );
     bot.sendMessage(message);
-    logger.info(`Reasoning: ${reasoning}, Message: ${message}`);
+    logger.debug(`Reasoning: ${reasoning}, Message: ${message}`);
   }
 };
 
