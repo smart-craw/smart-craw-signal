@@ -1,8 +1,9 @@
 services:
   signal-cli-rest-api:
     networks:
-      - signalnetwork
-    image: bbernhard/signal-cli-rest-api:latest-rootless-dev
+      - signal-network # to access signal servers
+      - agent-internal # so agent can hit this rest api
+    image: bbernhard/signal-cli-rest-api:0.99-rootless
     environment:
       - MODE=json-rpc-native #supported modes: json-rpc, native, normal
     volumes:
@@ -12,22 +13,41 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
+  squid-proxy:
+    networks:
+      - public-outbound # so this can hit host network (and internet)
+      - mcp-internal # so mcp can hit this
+    image: ghcr.io/smart-craw/smart-craw-signal-squid:v0.2.2
+
+  nginx: # proxy out to LLM service
+    image: ghcr.io/smart-craw/smart-craw-signal-nginx:v0.2.2
+    networks:
+      - agent-internal # reachable by agent
+      - public-outbound # so this can hit host network
+    environment:
+      BACKEND_SERVICE: [your_anthropic_base_url_with_port]
+
   code-mcp:
     networks:
-      - mcp-internal
+      - mcp-internal # private only
     image: ghcr.io/danielhstahl/mcp-code-execution:v0.1.2
+    environment:
+      HTTP_PROXY: squid-proxy:3128
+      HTTPS_PROXY: squid-proxy:3128
     volumes:
       - $HOME/signal/storage:/app/code_location
+
   smart-craw-signal:
     networks:
-      - signalnetwork
-      - mcp-internal
-    image: ghcr.io/smart-craw/smart-craw-signal:v0.2.1
+      - agent-internal # so agent can hit internal signal and nginx
+      - mcp-internal # so agent can hit code-mcp
+    image: ghcr.io/smart-craw/smart-craw-signal:v0.2.2
     volumes:
       - "$HOME/signal/storage:/app/mounts"
       - "$HOME/signal/storage/memory:/home/node/.claude"
     environment:
-      ANTHROPIC_BASE_URL: [yoururl]
+      ANTHROPIC_BASE_URL: http://nginx:8080
       SIGNAL_BOT_PHONE_NUMBER: [yourbotphonenumber]
       SIGNAL_USER_ADMIN_NUMBER: [yourrealphonenumber]
       SIGNAL_REST_ENDPOINT: http://signal-cli-rest-api:8080
@@ -38,7 +58,11 @@ services:
       signal-cli-rest-api:
         condition: service_healthy
 networks:
-  signalnetwork:
+  signal-network:
     driver: bridge
+  public-outbound:
+    driver: bridge
+  agent-internal:
+    internal: true
   mcp-internal:
     internal: true

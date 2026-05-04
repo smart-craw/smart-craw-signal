@@ -1,4 +1,4 @@
 node_modules
 .env
 error.log
-docker/docker-compose-real.yml
+docker/docker-compose-*.yml

@@ -25,3 +25,11 @@ jobs:
       - name: generate docker
         run: |
           docker buildx build --platform linux/amd64,linux/arm64 -t ghcr.io/smart-craw/smart-craw-signal:${{ github.event.release.tag_name }} -f docker/Dockerfile . --push
+
+      - name: generate nginx docker
+        run: |
+          docker buildx build --platform linux/amd64,linux/arm64 -t ghcr.io/smart-craw/smart-craw-signal-nginx:${{ github.event.release.tag_name }} -f docker/nginx.Dockerfile . --push
+
+      - name: generate squid docker
+        run: |
+          docker buildx build --platform linux/amd64,linux/arm64 -t ghcr.io/smart-craw/smart-craw-signal-squid:${{ github.event.release.tag_name }} -f docker/squid.Dockerfile . --push
