@@ -16,9 +16,9 @@ If you have a Google account you can create a new free phone number.
 
 `./node_modules/signal-sdk/bin/signal-cli -a +1[number] verify [number]`
 
-## Run
+## Run with docker compose
 
-Run in a terminal:
+Setup:
 
 ```sh
 # create a place for claude to put persistent files
@@ -42,7 +42,7 @@ sudo loginctl enable-linger $USER
 
 ### Env variables
 
-* ANTHROPIC_BASE_URL (defaults to "http://host.docker.internal:11434", local Ollama)
+* ANTHROPIC_BASE_URL (defaults to "http://host.docker.internal:11434", local Ollama.  If using docker compose, don't update this in `docker-compose.yml`...instead update the BACKEND_SERVICE environment variable for `nginx`.)
 * ANTHROPIC_AUTH_TOKEN (defaults to "ollama")
 * ANTHROPIC_API_KEY (defaults to "sk-local-dummy")
 * LOG_LEVEL (defaults to "info")

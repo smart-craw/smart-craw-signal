@@ -74,6 +74,8 @@ export function instructLlm(
       cwd: workingDirectory,
       systemPrompt: SYSTEM_PROMPT + appendSystemPrompt,
       tools: { type: "preset", preset: "claude_code" },
+      permissionMode: "acceptEdits", //auto-accept edits, should include most tool calls
+      disallowedTools: ["WebFetch", "WebSearch"], //can't access web, so don't use these tools
       ...mcpSection,
       canUseTool: approvalCb,
       ...sessionConfig,

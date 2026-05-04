@@ -1,0 +1,6 @@
+# Public sites
+.github.com
+.pypi.org
+.pythonhosted.org
+.npmjs.org
+.crates.io
