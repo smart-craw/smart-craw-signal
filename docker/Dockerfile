@@ -8,7 +8,7 @@ RUN apk add --no-cache bash # bash is needed for claude code
 # location of mounted files
 RUN mkdir /app/mounts
 
-## Lock down "node" user: only allow writes to /app/bots, /app/db, and ~/.claude
+## Lock down "node" user
 # Set all of /app to root:root, read-only for node
 RUN chown -R root:root /app && chmod -R 755 /app
 # Grant node write access ONLY to the specific dirs
