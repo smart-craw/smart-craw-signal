@@ -6,8 +6,7 @@ import {
   query,
 } from "@anthropic-ai/claude-agent-sdk";
 import { logger } from "../logging.ts";
-import { SYSTEM_PROMPT } from "./prompt.ts";
-//import { SessionManagement } from "./session.ts";
+import { generateMcpCodePromps, SYSTEM_PROMPT } from "./prompt.ts";
 
 const hookLogs = async (input: HookInput) => {
   logger.debug(
@@ -59,7 +58,7 @@ export function instructLlm(
       }
     : {};
   const appendSystemPrompt = mcpCodeUrl
-    ? `\n\nUse the ${codeMcpName} tool to run any Javascript, Python, or Rust program`
+    ? `\n${generateMcpCodePromps(mcpCodeUrl)}`
     : "";
   const sessionConfig = isNewSession
     ? {

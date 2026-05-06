@@ -22,7 +22,13 @@ Setup:
 
 ```sh
 # create a place for claude to put persistent files
-mkdir memory
+mkdir $HOME/signal/storage/memory
+
+# allow group writes (for both the agent and mcp services to access)
+chmod -R 775 $HOME/signal/storage
+
+# keep group consistent for new files
+chmod g+s $HOME/signal/storage
 ```
 
 Modify [docker-compose](./docker/docker-compose.yml) with your relevant [env](#env-variables) variables.  The run `docker compose -f docker-compose.yml up`.
