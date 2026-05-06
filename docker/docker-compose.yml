@@ -52,7 +52,6 @@ services:
       - "$HOME/signal/storage:/app/mounts"
       - "$HOME/signal/storage/memory:/home/node/.claude"
     environment:
-      HOME: /home/node # since have a different user
       ANTHROPIC_BASE_URL: http://nginx:8080
       SIGNAL_BOT_PHONE_NUMBER: [yourbotphonenumber]
       SIGNAL_USER_ADMIN_NUMBER: [yourrealphonenumber]
