@@ -15,7 +15,7 @@
     "test": "vitest"
   },
   "dependencies": {
-    "@anthropic-ai/claude-agent-sdk": "^0.2.110",
+    "@anthropic-ai/claude-agent-sdk": "^0.2.133",
     "dotenv": "^17.4.2",
     "signal-rest-ts": "^0.2.5",
     "winston": "^3.19.0"
