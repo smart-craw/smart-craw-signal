@@ -26,7 +26,7 @@ const codeMcpEndpoint = process.env.MCP_CODE_SERVER_ENDPOINT;
 const commandPrefix = "/";
 
 logger.info(`Start think token: ${startThink}, End think Token ${endThink}`);
-logger.info(`API endpoint: ${process.env.ANTHROPIC_BASE_URL}`);
+logger.info(`API endpoint: ${process.env.OPEN_API_COMPATABLE_ENDPOINT}`);
 logger.info(`Code MCP endpoint: ${codeMcpEndpoint}`);
 logger.info(`Working directory: ${workingDirectory}`);
 
@@ -58,7 +58,7 @@ const onComplete = (fullMessage: string, isError: boolean) => {
   }
 };
 const sessionManager = createSessionManager(
-  process.env.ANTHROPIC_BASE_URL || "http://localhost:11434",
+  process.env.OPEN_API_COMPATABLE_ENDPOINT || "http://localhost:11434",
   sessionDirectory,
   onComplete,
   workingDirectory,

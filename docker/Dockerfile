@@ -7,6 +7,8 @@ RUN apk add --no-cache bash # bash is needed for claude code
 
 # location of mounted files
 RUN mkdir /app/mounts
+# store sessions etc
+RUN mkdir /app/memory
 
 ## Lock down "node" user
 # Set all of /app to root:root, read-only for node
@@ -20,11 +22,11 @@ WORKDIR /app/
 RUN npm ci --only=production
 # Switch to the non-root user
 USER node
-# don't manually set PWD...keep this default
+# don't manually set AGENT_CWD...keep this default
 ENV AGENT_CWD="/app/mounts"
-ENV ANTHROPIC_BASE_URL="http://host.docker.internal:11434"
-ENV ANTHROPIC_AUTH_TOKEN="ollama"
-ENV ANTHROPIC_API_KEY="sk-local-dummy"
+# don't manually set SESSION_DIRECTORY...keep this default
+ENV SESSION_DIRECTORY="app/memory"
+ENV OPEN_API_COMPATABLE_ENDPOINT="http://host.docker.internal:11434"
 ENV LOG_LEVEL="info"
 ENV MODEL="hf.co/Qwen/Qwen3-4B-GGUF:latest"
 ENV SIGNAL_BOT_PHONE_NUMBER="0123456789"
