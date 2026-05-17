@@ -39,8 +39,6 @@ const bot = new SignalBot({
   },
 });
 const helpCommand = "help";
-const approveCommand = "approve";
-const denyCommand = "deny";
 const newSessionCommand = "new_session";
 const selectSessionCommand = "select_session";
 const listSessionsCommand = "list_sessions";
