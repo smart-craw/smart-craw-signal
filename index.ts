@@ -10,9 +10,8 @@ async function loadSignalBot() {
 const { SignalBot } = await loadSignalBot();
 import "dotenv/config";
 import path from "node:path";
-import { chdir, cwd } from "node:process";
-//import { approvalWrapper } from "./llm/converse.ts";
-import { handleLLMResponse, parseMessage } from "./llm/response.ts";
+import { cwd } from "node:process";
+import { parseMessage } from "./llm/response.ts";
 import { logger } from "./logging.ts";
 import { createSessionManager } from "./llm/session.ts";
 
@@ -64,7 +63,6 @@ const sessionManager = createSessionManager(
   process.env.ANTHROPIC_BASE_URL || "http://localhost:11434",
   sessionDirectory,
   onComplete,
-  //approvalWrapper(sessionManager.setApprovalResolver, sendMessage),
   workingDirectory,
   codeMcpEndpoint,
 );
@@ -81,40 +79,6 @@ bot.addCommand({
           aggr + `\n${commandPrefix}${name}: ${description}`,
         "Commands:\n",
       );
-  },
-});
-
-// Register a command "approve".
-bot.addCommand({
-  name: approveCommand,
-  description: "Approve tool use",
-  adminOnly: true,
-  handler: async () => {
-    const resolve = sessionManager.getApprovalResolver();
-    if (resolve) {
-      resolve(true); //approved
-      sessionManager.removeApprovalResolver();
-    } else {
-      logger.warn(`No pending approval found!`);
-    }
-    return `Approval submitted!`;
-  },
-});
-
-// Register a command "deny".
-bot.addCommand({
-  name: denyCommand,
-  description: "Deny tool use",
-  adminOnly: true,
-  handler: async () => {
-    const resolve = sessionManager.getApprovalResolver();
-    if (resolve) {
-      resolve(false); //denied
-      sessionManager.removeApprovalResolver();
-    } else {
-      logger.warn(`No pending approval found!`);
-    }
-    return `Denial submitted!`;
   },
 });
 
@@ -189,10 +153,6 @@ bot.on("message", (msg) => {
   sessionManager.queueMessage(msg.message);
   logger.info(`Message from ${sender}: ${msg.message}`);
 });
-const sendMessage = (toolName: string, parameters: string) =>
-  bot.sendMessage(
-    `Approval requested for tool "${toolName}". \n\nParameters: \n${parameters}\n.\n\nText "${commandPrefix}${approveCommand}" to approve or "${commandPrefix}${denyCommand}" to deny.`,
-  );
 
 bot.on("ready", async () => {
   logger.info("Bot is running!");
