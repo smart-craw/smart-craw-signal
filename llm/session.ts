@@ -1,25 +1,39 @@
-import {
-  listSessions,
-  type PermissionResult,
-  type Query,
-} from "@anthropic-ai/claude-agent-sdk";
-import { MessageQueue } from "./mq.ts";
+import path from "node:path";
+import { chdir, cwd } from "node:process";
+import { readdir, readFile, stat } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { logger } from "../logging.ts";
-import { instructLlm } from "./converse.ts";
+import { createAgent } from "./converse.ts";
+import { Agent } from "@strands-agents/sdk";
+import { handleLLMResponse } from "./response.ts";
 
 export type SessionManager = ReturnType<typeof createSessionManager>;
 
-export const createSessionManager = () => {
-  let mq = new MessageQueue();
-  let query: Query | undefined;
+export const createSessionManager = (
+  llmUrl: string,
+  sessionStorageLocation: string,
+  onComplete: (fullMessage: string, isError: boolean) => void,
+  //approvalCb: (toolName: string, input: any) => Promise<PermissionResult>,
+  workingDirectory?: string,
+  mcpCodeUrl?: string,
+  agentId?: string,
+) => {
+  let agent: Agent | undefined;
+  const localAgentId = agentId || "agent";
   const aq = new Map<string, (approved: boolean) => void>();
   let currentSessionId: string = randomUUID();
-  let isNew = true;
-  let hasLoaded = false;
-
+  if (workingDirectory) {
+    //tools adopt the process.cwd()
+    if (path.isAbsolute(workingDirectory)) {
+      chdir(workingDirectory);
+    } else {
+      chdir(path.join(cwd(), workingDirectory));
+    }
+  }
   const queueMessage = (message: string) => {
-    mq.enqueue(message);
+    if (agent) {
+      handleLLMResponse(agent.stream(message), onComplete);
+    }
   };
 
   const getApprovalResolver = () => {
@@ -41,59 +55,74 @@ export const createSessionManager = () => {
   };
 
   const setSessionId = (sessionId: string) => {
-    isNew = false;
     currentSessionId = sessionId;
+    startSession(sessionId);
     return currentSessionId;
   };
 
   const newSession = () => {
-    isNew = true;
     currentSessionId = randomUUID();
+    startSession(currentSessionId);
     return currentSessionId;
   };
 
-  const startSession = async (
-    approvalCb: (toolName: string, input: any) => Promise<PermissionResult>,
-    workingDirectory?: string,
-    mcpCodeUrl?: string,
-  ) => {
-    if (!hasLoaded) {
-      logger.warn("Cannot start session until after `loadSessions` is called");
-      return;
+  const startSession = (sessionId: string) => {
+    if (agent !== undefined) {
+      agent.cancel();
     }
-    if (query !== undefined) {
-      await query.interrupt();
-      query.close();
-      mq.close();
-      mq = new MessageQueue();
-    }
-    query = instructLlm(
-      isNew,
-      currentSessionId,
-      approvalCb,
-      mq,
-      workingDirectory,
+    agent = createAgent(
+      llmUrl,
+      sessionId,
+      sessionStorageLocation,
+      localAgentId,
       mcpCodeUrl,
     );
-    return query;
+    return agent;
   };
 
+  // this ONLY gets from filesystem.  If you create a new session
+  // and IMMEDIATELY list all sessions, the newest won't be displayed
   const getSessions = async () => {
-    return (await listSessions()).map(({ sessionId, summary }) => ({
-      sessionId,
-      summary,
-    }));
+    const files = await readdir(sessionStorageLocation);
+    const fileStats = await Promise.all(
+      files.map((v) =>
+        Promise.all([v, stat(path.join(sessionStorageLocation, v))]),
+      ),
+    );
+    return Promise.all(
+      fileStats
+        .filter(([_, v]) => v.isDirectory())
+        .map(async ([folderName]) => {
+          const latestSessionInfo = path.join(
+            sessionStorageLocation,
+            folderName,
+            "scopes",
+            "agent",
+            localAgentId,
+            "snapshots",
+            "snapshot_latest.json",
+          );
+          const { createdAt, data } = JSON.parse(
+            await readFile(latestSessionInfo, "utf-8"),
+          );
+
+          return {
+            createdAt,
+            summary: data.messages[0].content[0]["text"],
+            sessionId: folderName,
+          };
+        }),
+    );
   };
 
-  const loadSessions = async () => {
-    const sessions = await listSessions();
-    sessions.sort((a, b) => b.lastModified - a.lastModified);
+  const loadLastSessionOrCreateInitial = async () => {
+    const sessions = await getSessions();
+    sessions.sort((a, b) => b.createdAt - a.createdAt);
     logger.debug(`Sessions: ${JSON.stringify(sessions, null, 2)}`);
     if (sessions.length > 0) {
       currentSessionId = sessions[0].sessionId;
-      isNew = false;
     }
-    hasLoaded = true;
+    startSession(currentSessionId);
   };
 
   return {
@@ -104,8 +133,8 @@ export const createSessionManager = () => {
     getSessionId,
     setSessionId,
     newSession,
-    startSession,
+    //startSession,
     getSessions,
-    loadSessions,
+    loadLastSessionOrCreateInitial,
   };
 };

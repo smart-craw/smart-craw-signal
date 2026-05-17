@@ -1,5 +1,5 @@
-import { type Query } from "@anthropic-ai/claude-agent-sdk";
 import { logger } from "../logging.ts";
+import { AgentResult, type AgentStreamEvent } from "@strands-agents/sdk";
 export interface SplitReasoning {
   reasoning: string;
   message: string;
@@ -25,28 +25,46 @@ export const parseMessage = (
 };
 
 export async function handleLLMResponse(
-  query: Query,
+  query: AsyncGenerator<AgentStreamEvent, AgentResult, undefined>,
   onComplete: (fullMessage: string, isError: boolean) => void,
 ) {
-  //need to ensure the app doesn't completely crash if claude errors
+  //need to ensure the app doesn't completely crash if agent errors
   try {
     for await (const msg of query) {
       switch (msg.type) {
-        case "result": {
-          if (msg.subtype === "success") {
-            const { result } = msg;
-            onComplete(result, false);
-          } else {
-            const errorText = msg.errors.reduce(
-              (aggr, curr) => `${aggr}, ${curr}`,
+        case "agentResultEvent": {
+          const { result } = msg;
+          if (
+            result.stopReason === "endTurn" ||
+            result.stopReason === "stopSequence"
+          ) {
+            onComplete(
+              result.lastMessage.content
+                .filter((v) => v.type === "textBlock")
+                .reduce((agg, curr) => agg + curr.text, ""),
+              false,
             );
-            onComplete(errorText, true);
-            logger.error(`Error! ${errorText}`);
+          } else if (result.stopReason === "interrupt") {
+            onComplete(result.toString(), false);
+          } else if (
+            result.stopReason === "maxTokens" ||
+            result.stopReason === "modelContextWindowExceeded"
+          ) {
+            onComplete(`Stopped: ${result.stopReason}`, true);
           }
           break;
         }
+
+        // Errors surface here
+        case "afterModelCallEvent": {
+          if (msg.error) {
+            onComplete(msg.error.message, true);
+          }
+          break;
+        }
+
         default: {
-          logger.debug(`uncaught type ${msg}`);
+          logger.debug(`uncaught type ${JSON.stringify(msg, null, 2)}`);
         }
       }
     }

@@ -65,7 +65,7 @@ sudo loginctl enable-linger $USER
 ```sh
 docker run  -p 9001:8080 \
     -v $HOME/.local/share/signal-cli:/home/.local/share/signal-cli \
-    -e MODE=json-rpc-native bbernhard/signal-cli-rest-api:latest-rootless-dev
+    -e MODE=json-rpc-native bbernhard/signal-cli-rest-api:0.99-rootless
 ```
 
 ### Env variables
