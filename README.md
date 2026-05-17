@@ -48,9 +48,7 @@ sudo loginctl enable-linger $USER
 
 ### Env variables
 
-* ANTHROPIC_BASE_URL (defaults to "http://host.docker.internal:11434", local Ollama.  If using docker compose, don't update this in `docker-compose.yml`...instead update the BACKEND_SERVICE environment variable for `nginx`.)
-* ANTHROPIC_AUTH_TOKEN (defaults to "ollama")
-* ANTHROPIC_API_KEY (defaults to "sk-local-dummy")
+* OPEN_API_COMPATIBLE_ENDPOINT (defaults to "http://host.docker.internal:11434", local Ollama.  If using docker compose, don't update this in `docker-compose.yml`...instead update the BACKEND_SERVICE environment variable for `nginx`.)
 * LOG_LEVEL (defaults to "info")
 * START_THINK_TOKEN (start token for thinking, defaults to "<think>")
 * END_THINK_TOKEN (start token for thinking, defaults to "</think>")
@@ -75,7 +73,7 @@ Create a .env in the project directory with the following entries
 ```sh
 SIGNAL_BOT_PHONE_NUMBER="free_phone_number_you_got_from_google"
 SIGNAL_USER_ADMIN_NUMBER="your_actual_phone_number"
-ANTHROPIC_BASE_URL="URL for your hosted model"
+OPEN_API_COMPATIBLE_ENDPOINT="URL for your hosted model"
 ```
 
 ### Run
