@@ -86,7 +86,6 @@ bot.addCommand({
   adminOnly: true,
   handler: async () => {
     const sessionId = sessionManager.newSession();
-    //await setAgent();
     return `New session created: ${sessionId}`;
   },
 });

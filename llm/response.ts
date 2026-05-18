@@ -64,7 +64,7 @@ export async function handleLLMResponse(
         }
 
         default: {
-          logger.debug(`uncaught type ${JSON.stringify(msg, null, 2)}`);
+          logger.debug(`Unmatched type ${JSON.stringify(msg, null, 2)}`);
         }
       }
     }
