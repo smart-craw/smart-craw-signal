@@ -56,6 +56,16 @@ sudo loginctl enable-linger $USER
 * SIGNAL_USER_ADMIN_NUMBER (your actual phone number)
 * SIGNAL_REST_ENDPOINT (endpoint exposed by signal server docker, defaults to http://localhost:9001)
 
+## Network Topology and Security
+
+For ease of use I've given the agent carte blanche.  There is no approval requests for the `bash`, `fileEditor`, or (optional) `mcpCodeClient`.  This requires tight controls elsewhere to ensure that any deleterious actions have a small blast radius.  The [docker-compose](./docker/docker-compose.yml) helps to reduce this blast radius.
+
+Docker itself provides some sandboxing.  For example, the agent can only operate on host files via the mounted volume.  The agent could change directory, but will only be traversing directories in the docker container itself.  The agent does NOT have write access to its own code within the docker container.
+
+### Private Networks
+
+
+
 ## Develop
 
 ### Run signal server locally

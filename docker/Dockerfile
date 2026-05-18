@@ -15,8 +15,7 @@ RUN mkdir /app/memory
 RUN chown -R root:root /app && chmod -R 755 /app
 # Grant node write access ONLY to the specific dirs
 RUN chown node:node /app/mounts && chmod 700 /app/mounts
-# Create ~/.claude (node's home is /home/node) and grant write access
-RUN mkdir -p /home/node/.claude && chown -R node:node /home/node/.claude && chmod 700 /home/node/.claude
+RUN chown node:node /app/memory && chmod 700 /app/memory
 
 WORKDIR /app/
 RUN npm ci --only=production
