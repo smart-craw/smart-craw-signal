@@ -28,7 +28,6 @@ const commandPrefix = "/";
 logger.info(`Start think token: ${startThink}, End think Token ${endThink}`);
 logger.info(`API endpoint: ${process.env.OPEN_API_COMPATABLE_ENDPOINT}`);
 logger.info(`Code MCP endpoint: ${codeMcpEndpoint}`);
-logger.info(`Working directory: ${workingDirectory}`);
 
 const bot = new SignalBot({
   phoneNumber: `+1${process.env.SIGNAL_BOT_PHONE_NUMBER}`,

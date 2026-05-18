@@ -13,41 +13,28 @@ export const createSessionManager = (
   llmUrl: string,
   sessionStorageLocation: string,
   onComplete: (fullMessage: string, isError: boolean) => void,
-  //approvalCb: (toolName: string, input: any) => Promise<PermissionResult>,
   workingDirectory?: string,
   mcpCodeUrl?: string,
   agentId?: string,
 ) => {
   let agent: Agent | undefined;
   const localAgentId = agentId || "agent";
-  const aq = new Map<string, (approved: boolean) => void>();
   let currentSessionId: string = randomUUID();
   if (workingDirectory) {
     //tools adopt the process.cwd()
     if (path.isAbsolute(workingDirectory)) {
+      logger.info(`Working directory is ${workingDirectory}`);
       chdir(workingDirectory);
     } else {
-      chdir(path.join(cwd(), workingDirectory));
+      const absoluteWorkingDirectory = path.join(cwd(), workingDirectory);
+      logger.info(`Working directory is ${absoluteWorkingDirectory}`);
+      chdir(absoluteWorkingDirectory);
     }
   }
   const queueMessage = (message: string) => {
     if (agent) {
       handleLLMResponse(agent.stream(message), onComplete);
     }
-  };
-
-  const getApprovalResolver = () => {
-    return aq.get(currentSessionId);
-  };
-
-  const setApprovalResolver = () => {
-    return new Promise<boolean>((resolve) => {
-      aq.set(currentSessionId, resolve);
-    });
-  };
-
-  const removeApprovalResolver = () => {
-    aq.delete(currentSessionId);
   };
 
   const getSessionId = () => {
@@ -127,13 +114,9 @@ export const createSessionManager = (
 
   return {
     queueMessage,
-    getApprovalResolver,
-    setApprovalResolver,
-    removeApprovalResolver,
     getSessionId,
     setSessionId,
     newSession,
-    //startSession,
     getSessions,
     loadLastSessionOrCreateInitial,
   };
