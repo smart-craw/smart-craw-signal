@@ -102,6 +102,7 @@ export const createSessionManager = (
       fileStats
         .filter(([_, v]) => v.isDirectory())
         .map(async ([folderName]) => {
+          //see https://strandsagents.com/docs/user-guide/concepts/agents/session-management/#file-storage-structure
           const latestSessionInfo = path.join(
             sessionStorageLocation,
             folderName,
