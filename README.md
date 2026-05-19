@@ -64,7 +64,9 @@ Docker itself provides some sandboxing.  For example, the agent can only operate
 
 ### Private Networks
 
+The network topology limits what the agent service and the code mcp service can access.  The agent can only access github.com, npmjs.com, pypi.org, and the LLM Api. the code mcp service can only access github.com, npmjs.com, and pypi.org.  Programatically the agent service only accesses the LLM Api.
 
+![alt text](./docs/docker_network_topology.svg)
 
 ## Develop
 
