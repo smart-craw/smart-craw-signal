@@ -29,7 +29,7 @@ export function createAgent(
     apiKey: "helloworld",
     contextWindowLimit: 256_000, //needed to get proactive compaction working correctly
     clientConfig: {
-      baseURL: llmUrl, //process.env.ANTHROPIC_BASE_URL || "http://localhost:11434",
+      baseURL: llmUrl,
     },
   });
 
