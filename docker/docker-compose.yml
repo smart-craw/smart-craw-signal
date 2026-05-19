@@ -50,9 +50,9 @@ services:
     user: "node:1500" # same group as code-mcp since both read/write to the same directory
     volumes:
       - "$HOME/signal/storage:/app/mounts"
-      - "$HOME/signal/storage/memory:/home/node/.claude"
+      - "$HOME/signal/storage/memory:/app/memory"
     environment:
-      ANTHROPIC_BASE_URL: http://nginx:8080
+      OPEN_API_COMPATIBLE_ENDPOINT: http://nginx:8080
       SIGNAL_BOT_PHONE_NUMBER: [yourbotphonenumber]
       SIGNAL_USER_ADMIN_NUMBER: [yourrealphonenumber]
       SIGNAL_REST_ENDPOINT: http://signal-cli-rest-api:8080

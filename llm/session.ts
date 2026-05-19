@@ -1,111 +1,154 @@
-import {
-  listSessions,
-  type PermissionResult,
-  type Query,
-} from "@anthropic-ai/claude-agent-sdk";
-import { MessageQueue } from "./mq.ts";
+import path from "node:path";
+import { chdir, cwd } from "node:process";
+import { readdir, readFile, stat } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { logger } from "../logging.ts";
-import { instructLlm } from "./converse.ts";
+import { createAgent } from "./converse.ts";
+import { Agent } from "@strands-agents/sdk";
+import { handleLLMResponse } from "./response.ts";
 
 export type SessionManager = ReturnType<typeof createSessionManager>;
 
-export const createSessionManager = () => {
-  let mq = new MessageQueue();
-  let query: Query | undefined;
-  const aq = new Map<string, (approved: boolean) => void>();
+export const createSessionManager = (
+  llmUrl: string,
+  sessionStorageLocation: string,
+  onComplete: (fullMessage: string, isError: boolean) => void,
+  workingDirectory?: string,
+  mcpCodeUrl?: string,
+  agentId?: string,
+) => {
+  let agent: Agent | undefined;
+  const localAgentId = agentId || "agent";
   let currentSessionId: string = randomUUID();
-  let isNew = true;
-  let hasLoaded = false;
+  const queue: string[] = [];
+  let running = false;
 
+  if (workingDirectory) {
+    const absoluteWorkingDirectory = path.isAbsolute(workingDirectory)
+      ? workingDirectory
+      : path.join(cwd(), workingDirectory);
+    //tools adopt the process.cwd()
+    logger.info(`Working directory is ${absoluteWorkingDirectory}`);
+    chdir(absoluteWorkingDirectory);
+  }
+
+  // while in theory no messages will arrive while
+  // previous response is still running, this ensures that
+  // if they do that they wait until the llm is ready
+  // before executing
   const queueMessage = (message: string) => {
-    mq.enqueue(message);
+    queue.push(message);
+    if (!running) {
+      drain();
+    }
   };
 
-  const getApprovalResolver = () => {
-    return aq.get(currentSessionId);
+  const drain = async () => {
+    if (agent) {
+      running = true;
+      // careful, queue can be mutated via queueMessage while this loop is running
+      // this is intentional, but worth noting
+      while (queue.length > 0) {
+        const msg = queue.shift()!;
+        await handleLLMResponse(agent.stream(msg), onComplete);
+      }
+      running = false;
+    }
   };
-
-  const setApprovalResolver = () => {
-    return new Promise<boolean>((resolve) => {
-      aq.set(currentSessionId, resolve);
-    });
-  };
-
-  const removeApprovalResolver = () => {
-    aq.delete(currentSessionId);
-  };
-
   const getSessionId = () => {
     return currentSessionId;
   };
 
   const setSessionId = (sessionId: string) => {
-    isNew = false;
     currentSessionId = sessionId;
+    startSession(sessionId);
     return currentSessionId;
   };
 
   const newSession = () => {
-    isNew = true;
     currentSessionId = randomUUID();
+    startSession(currentSessionId);
     return currentSessionId;
   };
 
-  const startSession = async (
-    approvalCb: (toolName: string, input: any) => Promise<PermissionResult>,
-    workingDirectory?: string,
-    mcpCodeUrl?: string,
-  ) => {
-    if (!hasLoaded) {
-      logger.warn("Cannot start session until after `loadSessions` is called");
-      return;
+  const cancelMessage = () => {
+    if (agent !== undefined) {
+      agent.cancel();
     }
-    if (query !== undefined) {
-      await query.interrupt();
-      query.close();
-      mq.close();
-      mq = new MessageQueue();
-    }
-    query = instructLlm(
-      isNew,
-      currentSessionId,
-      approvalCb,
-      mq,
-      workingDirectory,
+  };
+
+  const startSession = (sessionId: string) => {
+    cancelMessage();
+    agent = createAgent(
+      llmUrl,
+      sessionId,
+      sessionStorageLocation,
+      localAgentId,
       mcpCodeUrl,
     );
-    return query;
+    return agent;
   };
 
+  // this ONLY gets from filesystem.  If you create a new session
+  // and IMMEDIATELY list all sessions, the newest won't be displayed
   const getSessions = async () => {
-    return (await listSessions()).map(({ sessionId, summary }) => ({
-      sessionId,
-      summary,
-    }));
+    const files = await readdir(sessionStorageLocation);
+    const fileStats = await Promise.all(
+      files.map((v) =>
+        Promise.all([v, stat(path.join(sessionStorageLocation, v))]),
+      ),
+    );
+    const sessions = await Promise.all(
+      fileStats
+        .filter(([_, v]) => v.isDirectory())
+        .map(async ([folderName]) => {
+          //see https://strandsagents.com/docs/user-guide/concepts/agents/session-management/#file-storage-structure
+          const latestSessionInfo = path.join(
+            sessionStorageLocation,
+            folderName,
+            "scopes",
+            "agent",
+            localAgentId,
+            "snapshots",
+            "snapshot_latest.json",
+          );
+          try {
+            const { createdAt, data } = JSON.parse(
+              await readFile(latestSessionInfo, "utf-8"),
+            );
+
+            return {
+              createdAt,
+              summary: data.messages[0].content[0]["text"],
+              sessionId: folderName,
+            };
+          } catch (err) {
+            const error = err as Error;
+            logger.error(`Error! ${error.name}: ${error.message}`);
+            return null;
+          }
+        }),
+    );
+    return sessions.filter((v) => v !== null);
   };
 
-  const loadSessions = async () => {
-    const sessions = await listSessions();
-    sessions.sort((a, b) => b.lastModified - a.lastModified);
+  const loadLastSessionOrCreateInitial = async () => {
+    const sessions = await getSessions();
+    sessions.sort((a, b) => b.createdAt - a.createdAt);
     logger.debug(`Sessions: ${JSON.stringify(sessions, null, 2)}`);
     if (sessions.length > 0) {
       currentSessionId = sessions[0].sessionId;
-      isNew = false;
     }
-    hasLoaded = true;
+    startSession(currentSessionId);
   };
 
   return {
     queueMessage,
-    getApprovalResolver,
-    setApprovalResolver,
-    removeApprovalResolver,
     getSessionId,
     setSessionId,
     newSession,
-    startSession,
     getSessions,
-    loadSessions,
+    cancelMessage,
+    loadLastSessionOrCreateInitial,
   };
 };

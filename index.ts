@@ -9,8 +9,9 @@ async function loadSignalBot() {
 }
 const { SignalBot } = await loadSignalBot();
 import "dotenv/config";
-import { approvalWrapper } from "./llm/converse.ts";
-import { handleLLMResponse, parseMessage } from "./llm/response.ts";
+import path from "node:path";
+import { cwd } from "node:process";
+import { parseMessage } from "./llm/response.ts";
 import { logger } from "./logging.ts";
 import { createSessionManager } from "./llm/session.ts";
 
@@ -18,16 +19,15 @@ const startThink = process.env.START_THINK_TOKEN || "<think>";
 const endThink = process.env.END_THINK_TOKEN || "</think>";
 const adminNumber = `+1${process.env.SIGNAL_USER_ADMIN_NUMBER}`;
 const workingDirectory = process.env.AGENT_CWD;
+const sessionDirectory =
+  process.env.SESSION_DIRECTORY || path.join(cwd(), "./sessions");
 const signalUrl = process.env.SIGNAL_REST_ENDPOINT || "http://localhost:9001";
 const codeMcpEndpoint = process.env.MCP_CODE_SERVER_ENDPOINT;
 const commandPrefix = "/";
 
 logger.info(`Start think token: ${startThink}, End think Token ${endThink}`);
-logger.info(`API endpoint: ${process.env.ANTHROPIC_BASE_URL}`);
+logger.info(`API endpoint: ${process.env.OPEN_API_COMPATIBLE_ENDPOINT}`);
 logger.info(`Code MCP endpoint: ${codeMcpEndpoint}`);
-logger.info(`Working directory: ${workingDirectory}`);
-
-const sessionManager = createSessionManager();
 
 const bot = new SignalBot({
   phoneNumber: `+1${process.env.SIGNAL_BOT_PHONE_NUMBER}`,
@@ -38,12 +38,32 @@ const bot = new SignalBot({
   },
 });
 const helpCommand = "help";
-const approveCommand = "approve";
-const denyCommand = "deny";
 const newSessionCommand = "new_session";
 const selectSessionCommand = "select_session";
 const listSessionsCommand = "list_sessions";
 const activeSessionCommand = "current_session";
+const cancelLastMessage = "abort";
+
+const onComplete = (fullMessage: string, isError: boolean) => {
+  if (isError) {
+    bot.sendMessage(`Bot didn't complete successfully! ${fullMessage}`);
+  } else {
+    const { reasoning, message } = parseMessage(
+      startThink,
+      endThink,
+      fullMessage,
+    );
+    bot.sendMessage(message);
+    logger.debug(`Reasoning: ${reasoning}, Message: ${message}`);
+  }
+};
+const sessionManager = createSessionManager(
+  process.env.OPEN_API_COMPATIBLE_ENDPOINT || "http://localhost:11434",
+  sessionDirectory,
+  onComplete,
+  workingDirectory,
+  codeMcpEndpoint,
+);
 
 bot.addCommand({
   name: helpCommand,
@@ -60,52 +80,6 @@ bot.addCommand({
   },
 });
 
-// Register a command "approve".
-bot.addCommand({
-  name: approveCommand,
-  description: "Approve tool use",
-  adminOnly: true,
-  handler: async () => {
-    const resolve = sessionManager.getApprovalResolver();
-    if (resolve) {
-      resolve(true); //approved
-      sessionManager.removeApprovalResolver();
-    } else {
-      logger.warn(`No pending approval found!`);
-    }
-    return `Approval submitted!`;
-  },
-});
-
-// Register a command "deny".
-bot.addCommand({
-  name: denyCommand,
-  description: "Deny tool use",
-  adminOnly: true,
-  handler: async () => {
-    const resolve = sessionManager.getApprovalResolver();
-    if (resolve) {
-      resolve(false); //denied
-      sessionManager.removeApprovalResolver();
-    } else {
-      logger.warn(`No pending approval found!`);
-    }
-    return `Denial submitted!`;
-  },
-});
-const setQuery = async () => {
-  const query = await sessionManager.startSession(
-    approvalWrapper(sessionManager.setApprovalResolver, sendMessage),
-    workingDirectory,
-    codeMcpEndpoint,
-  );
-  if (query) {
-    handleLLMResponse(query, onComplete);
-  } else {
-    logger.warn("Query created with start session but it is undefined!");
-  }
-};
-
 // Register a command "newsession".
 bot.addCommand({
   name: newSessionCommand,
@@ -113,7 +87,6 @@ bot.addCommand({
   adminOnly: true,
   handler: async () => {
     const sessionId = sessionManager.newSession();
-    await setQuery();
     return `New session created: ${sessionId}`;
   },
 });
@@ -157,7 +130,6 @@ bot.addCommand({
       const index = parseInt(sessionIndex);
       const { sessionId } = sessions[index];
       sessionManager.setSessionId(sessionId);
-      await setQuery();
       return `New session set: ${sessionId}`;
     } catch (err) {
       const error = err as Error;
@@ -165,6 +137,16 @@ bot.addCommand({
       logger.error(msg);
       return msg;
     }
+  },
+});
+
+bot.addCommand({
+  name: cancelLastMessage,
+  description: "Abort current execution",
+  adminOnly: true,
+  handler: async () => {
+    sessionManager.cancelMessage();
+    return `Execution aborted.`;
   },
 });
 
@@ -178,29 +160,11 @@ bot.on("message", (msg) => {
   sessionManager.queueMessage(msg.message);
   logger.info(`Message from ${sender}: ${msg.message}`);
 });
-const sendMessage = (toolName: string, parameters: string) =>
-  bot.sendMessage(
-    `Approval requested for tool "${toolName}". \n\nParameters: \n${parameters}\n.\n\nText "${commandPrefix}${approveCommand}" to approve or "${commandPrefix}${denyCommand}" to deny.`,
-  );
-const onComplete = (fullMessage: string, isError: boolean) => {
-  if (isError) {
-    bot.sendMessage(`Bot didn't complete successfully! ${fullMessage}`);
-  } else {
-    const { reasoning, message } = parseMessage(
-      startThink,
-      endThink,
-      fullMessage,
-    );
-    bot.sendMessage(message);
-    logger.debug(`Reasoning: ${reasoning}, Message: ${message}`);
-  }
-};
 
 bot.on("ready", async () => {
   logger.info("Bot is running!");
-  await setQuery();
+  await sessionManager.loadLastSessionOrCreateInitial();
 });
-await sessionManager.loadSessions();
 await bot.start(commandPrefix);
 
 process.on("SIGINT", () => {

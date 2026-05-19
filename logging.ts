@@ -1,5 +1,4 @@
 import winston from "winston";
-//const errorLog = "error.log";
 
 const logLevel = process.env.LOG_LEVEL || "info";
 export const logger = winston.createLogger({

@@ -1,107 +1,81 @@
 import {
-  type Query,
-  type HookInput,
-  type PermissionResult,
-  type SDKUserMessage,
-  query,
-} from "@anthropic-ai/claude-agent-sdk";
+  Agent,
+  FileStorage,
+  McpClient,
+  type McpTransport,
+  SessionManager,
+  SummarizingConversationManager,
+  BeforeInvocationEvent,
+  BeforeToolCallEvent,
+  BeforeModelCallEvent,
+} from "@strands-agents/sdk";
+import { OpenAIModel } from "@strands-agents/sdk/models/openai";
 import { logger } from "../logging.ts";
 import { generateMcpCodePromps, SYSTEM_PROMPT } from "./prompt.ts";
 
-const hookLogs = async (input: HookInput) => {
-  logger.debug(
-    `Hook called: ${input.hook_event_name}.  Message: ${JSON.stringify(input, null, 2)}`,
-  );
-  return {};
-};
+import { bash } from "@strands-agents/sdk/vended-tools/bash";
+import { fileEditor } from "@strands-agents/sdk/vended-tools/file-editor";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 
-export const approvalWrapper = (
-  handleApproval: () => Promise<boolean>,
-  sendMessage: (toolName: string, parameters: string) => void,
-) => {
-  return async function customApprovalCallback(
-    toolName: string,
-    input: any,
-  ): Promise<PermissionResult> {
-    logger.debug("Approval called");
-    sendMessage(toolName, JSON.stringify(input, null, 2));
-    const isApproved = await handleApproval();
-    logger.debug("Approval decision made", isApproved);
-    return isApproved
-      ? { behavior: "allow", updatedInput: input }
-      : { behavior: "deny", message: "Tool use denied" };
-  };
-};
-// autogenerates sessionid on first run, then on next run continues last session
-// this works for Signal since its "single threaded" conversation
-export function instructLlm(
-  isNewSession: boolean,
+export function createAgent(
+  llmUrl: string,
   sessionId: string,
-  approvalCb: (toolName: string, input: any) => Promise<PermissionResult>,
-  mq: AsyncIterable<SDKUserMessage>,
-  workingDirectory?: string,
+  sessionStorageLocation: string, //equivalent to ~/.claude in claude code
+  agentId: string,
   mcpCodeUrl?: string,
-): Query {
-  const codeMcpName = "code-mcp";
-  const mcpSection = mcpCodeUrl
-    ? {
-        mcpServers: {
-          [codeMcpName]: {
-            type: "http" as const,
-            url: mcpCodeUrl,
-            headers: {
-              Accept: "application/json, text/event-stream",
-            },
-          },
-        },
-        allowedTools: [`mcp__${codeMcpName}__*`],
-      }
-    : {};
+) {
+  const model = new OpenAIModel({
+    api: "chat",
+    apiKey: "helloworld",
+    contextWindowLimit: 256_000, //needed to get proactive compaction working correctly
+    clientConfig: {
+      baseURL: llmUrl,
+    },
+  });
+
+  const mcpCodeClient =
+    mcpCodeUrl &&
+    new McpClient({
+      transport: new StreamableHTTPClientTransport(
+        new URL(mcpCodeUrl),
+      ) as McpTransport,
+    });
+
+  const session = new SessionManager({
+    sessionId,
+    storage: { snapshot: new FileStorage(sessionStorageLocation) },
+  });
+
+  const tools = [bash, fileEditor, ...(mcpCodeClient ? [mcpCodeClient] : [])];
+
   const appendSystemPrompt = mcpCodeUrl
     ? `\n${generateMcpCodePromps(mcpCodeUrl)}`
     : "";
-  const sessionConfig = isNewSession
-    ? {
-        sessionId,
-      }
-    : {
-        resume: sessionId,
-      };
-  const q = query({
-    prompt: mq,
-    options: {
-      cwd: workingDirectory,
-      systemPrompt: SYSTEM_PROMPT + appendSystemPrompt,
-      tools: { type: "preset", preset: "claude_code" },
-      permissionMode: "acceptEdits", //auto-accept edits, should include most tool calls
-      disallowedTools: ["WebFetch", "WebSearch"], //can't access web, so don't use these tools
-      ...mcpSection,
-      canUseTool: approvalCb,
-      ...sessionConfig,
-      hooks: {
-        Notification: [{ hooks: [hookLogs] }],
-        PostToolUseFailure: [
-          {
-            hooks: [hookLogs],
-          },
-        ],
-        PermissionRequest: [
-          {
-            hooks: [hookLogs],
-          },
-        ],
-      },
-      includePartialMessages: true,
-      model: process.env.MODEL || "hf.co/Qwen/Qwen3-4B-GGUF:latest",
-      env: {
-        ...process.env,
-        ANTHROPIC_BASE_URL:
-          process.env.ANTHROPIC_BASE_URL || "http://localhost:11434",
-        ANTHROPIC_AUTH_TOKEN: process.env.ANTHROPIC_AUTH_TOKEN || "ollama",
-        ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY || "sk-local-dummy",
-        CLAUDE_CODE_ATTRIBUTION_HEADER: "0",
-      },
-    },
+
+  // Create an agent with tools
+  const agent = new Agent({
+    systemPrompt: SYSTEM_PROMPT + appendSystemPrompt,
+    sessionManager: session,
+    model,
+    printer: false,
+    tools,
+    id: agentId,
+
+    conversationManager: new SummarizingConversationManager({
+      summaryRatio: 0.5,
+      preserveRecentMessages: 10,
+      proactiveCompression: true, //compress before hitting context limit error
+    }),
   });
-  return q;
+  agent.addHook(BeforeInvocationEvent, (event) => {
+    logger.info(JSON.stringify(event, null, 2));
+  });
+
+  agent.addHook(BeforeModelCallEvent, (event) => {
+    logger.info(JSON.stringify(event, null, 2));
+  });
+  agent.addHook(BeforeToolCallEvent, (event) => {
+    logger.info(JSON.stringify(event, null, 2));
+  });
+  return agent;
 }
