@@ -26,7 +26,7 @@ const codeMcpEndpoint = process.env.MCP_CODE_SERVER_ENDPOINT;
 const commandPrefix = "/";
 
 logger.info(`Start think token: ${startThink}, End think Token ${endThink}`);
-logger.info(`API endpoint: ${process.env.OPEN_API_COMPATABLE_ENDPOINT}`);
+logger.info(`API endpoint: ${process.env.OPEN_API_COMPATIBLE_ENDPOINT}`);
 logger.info(`Code MCP endpoint: ${codeMcpEndpoint}`);
 
 const bot = new SignalBot({
@@ -42,6 +42,7 @@ const newSessionCommand = "new_session";
 const selectSessionCommand = "select_session";
 const listSessionsCommand = "list_sessions";
 const activeSessionCommand = "current_session";
+const cancelLastMessage = "abort";
 
 const onComplete = (fullMessage: string, isError: boolean) => {
   if (isError) {
@@ -57,7 +58,7 @@ const onComplete = (fullMessage: string, isError: boolean) => {
   }
 };
 const sessionManager = createSessionManager(
-  process.env.OPEN_API_COMPATABLE_ENDPOINT || "http://localhost:11434",
+  process.env.OPEN_API_COMPATIBLE_ENDPOINT || "http://localhost:11434",
   sessionDirectory,
   onComplete,
   workingDirectory,
@@ -136,6 +137,16 @@ bot.addCommand({
       logger.error(msg);
       return msg;
     }
+  },
+});
+
+bot.addCommand({
+  name: cancelLastMessage,
+  description: "Abort current execution",
+  adminOnly: true,
+  handler: async () => {
+    sessionManager.cancelMessage();
+    return `Execution aborted.`;
   },
 });
 

@@ -25,7 +25,7 @@ USER node
 ENV AGENT_CWD="/app/mounts"
 # don't manually set SESSION_DIRECTORY...keep this default
 ENV SESSION_DIRECTORY="app/memory"
-ENV OPEN_API_COMPATABLE_ENDPOINT="http://host.docker.internal:11434"
+ENV OPEN_API_COMPATIBLE_ENDPOINT="http://host.docker.internal:11434"
 ENV LOG_LEVEL="info"
 ENV MODEL="hf.co/Qwen/Qwen3-4B-GGUF:latest"
 ENV SIGNAL_BOT_PHONE_NUMBER="0123456789"

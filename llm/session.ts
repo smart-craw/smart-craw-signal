@@ -20,23 +20,41 @@ export const createSessionManager = (
   let agent: Agent | undefined;
   const localAgentId = agentId || "agent";
   let currentSessionId: string = randomUUID();
+  const queue: string[] = [];
+  let running = false;
+
   if (workingDirectory) {
+    const absoluteWorkingDirectory = path.isAbsolute(workingDirectory)
+      ? workingDirectory
+      : path.join(cwd(), workingDirectory);
     //tools adopt the process.cwd()
-    if (path.isAbsolute(workingDirectory)) {
-      logger.info(`Working directory is ${workingDirectory}`);
-      chdir(workingDirectory);
-    } else {
-      const absoluteWorkingDirectory = path.join(cwd(), workingDirectory);
-      logger.info(`Working directory is ${absoluteWorkingDirectory}`);
-      chdir(absoluteWorkingDirectory);
-    }
+    logger.info(`Working directory is ${absoluteWorkingDirectory}`);
+    chdir(absoluteWorkingDirectory);
   }
+
+  // while in theory no messages will arrive while
+  // previous response is still running, this ensures that
+  // if they do that they wait until the llm is ready
+  // before executing
   const queueMessage = (message: string) => {
-    if (agent) {
-      handleLLMResponse(agent.stream(message), onComplete);
+    queue.push(message);
+    if (!running) {
+      drain();
     }
   };
 
+  const drain = async () => {
+    if (agent) {
+      running = true;
+      // careful, queue can be mutated via queueMessage while this loop is running
+      // this is intentional, but worth noting
+      while (queue.length > 0) {
+        const msg = queue.shift()!;
+        await handleLLMResponse(agent.stream(msg), onComplete);
+      }
+      running = false;
+    }
+  };
   const getSessionId = () => {
     return currentSessionId;
   };
@@ -53,10 +71,14 @@ export const createSessionManager = (
     return currentSessionId;
   };
 
-  const startSession = (sessionId: string) => {
+  const cancelMessage = () => {
     if (agent !== undefined) {
       agent.cancel();
     }
+  };
+
+  const startSession = (sessionId: string) => {
+    cancelMessage();
     agent = createAgent(
       llmUrl,
       sessionId,
@@ -76,7 +98,7 @@ export const createSessionManager = (
         Promise.all([v, stat(path.join(sessionStorageLocation, v))]),
       ),
     );
-    return Promise.all(
+    const sessions = await Promise.all(
       fileStats
         .filter(([_, v]) => v.isDirectory())
         .map(async ([folderName]) => {
@@ -89,17 +111,24 @@ export const createSessionManager = (
             "snapshots",
             "snapshot_latest.json",
           );
-          const { createdAt, data } = JSON.parse(
-            await readFile(latestSessionInfo, "utf-8"),
-          );
+          try {
+            const { createdAt, data } = JSON.parse(
+              await readFile(latestSessionInfo, "utf-8"),
+            );
 
-          return {
-            createdAt,
-            summary: data.messages[0].content[0]["text"],
-            sessionId: folderName,
-          };
+            return {
+              createdAt,
+              summary: data.messages[0].content[0]["text"],
+              sessionId: folderName,
+            };
+          } catch (err) {
+            const error = err as Error;
+            logger.error(`Error! ${error.name}: ${error.message}`);
+            return null;
+          }
         }),
     );
+    return sessions.filter((v) => v !== null);
   };
 
   const loadLastSessionOrCreateInitial = async () => {
@@ -118,6 +147,7 @@ export const createSessionManager = (
     setSessionId,
     newSession,
     getSessions,
+    cancelMessage,
     loadLastSessionOrCreateInitial,
   };
 };
