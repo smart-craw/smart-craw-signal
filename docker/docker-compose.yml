@@ -59,6 +59,8 @@ services:
       MCP_CODE_SERVER_ENDPOINT: http://code-mcp:8000/mcp
       START_THINK_TOKEN: "<think>"
       END_THINK_TOKEN: "</think>"
+    logging:
+      driver: journald # systemctl will track these logs
     depends_on:
       signal-cli-rest-api:
         condition: service_healthy
