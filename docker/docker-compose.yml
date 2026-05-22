@@ -46,7 +46,7 @@ services:
     networks:
       - agent-internal # so agent can hit internal signal and nginx
       - mcp-internal # so agent can hit code-mcp
-    image: ghcr.io/smart-craw/smart-craw-signal:v0.2.3
+    image: ghcr.io/smart-craw/smart-craw-signal:v0.3.1
     user: "node:1500" # same group as code-mcp since both read/write to the same directory
     volumes:
       - "$HOME/signal/storage:/app/mounts"
@@ -59,6 +59,8 @@ services:
       MCP_CODE_SERVER_ENDPOINT: http://code-mcp:8000/mcp
       START_THINK_TOKEN: "<think>"
       END_THINK_TOKEN: "</think>"
+    logging:
+      driver: journald # systemctl will track these logs
     depends_on:
       signal-cli-rest-api:
         condition: service_healthy
