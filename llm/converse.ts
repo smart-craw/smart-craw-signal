@@ -8,6 +8,7 @@ import {
   BeforeInvocationEvent,
   BeforeToolCallEvent,
   BeforeModelCallEvent,
+  tool,
 } from "@strands-agents/sdk";
 import { OpenAIModel } from "@strands-agents/sdk/models/openai";
 import { logger } from "../logging.ts";
@@ -16,6 +17,14 @@ import { generateMcpCodePromps, SYSTEM_PROMPT } from "./prompt.ts";
 import { bash } from "@strands-agents/sdk/vended-tools/bash";
 import { fileEditor } from "@strands-agents/sdk/vended-tools/file-editor";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+
+const dateTimeTool = tool({
+  name: "current_datetime",
+  description: "Get current date and time",
+  callback: () => {
+    return new Date().toISOString();
+  },
+});
 
 export function createAgent(
   llmUrl: string,
@@ -46,7 +55,12 @@ export function createAgent(
     storage: { snapshot: new FileStorage(sessionStorageLocation) },
   });
 
-  const tools = [bash, fileEditor, ...(mcpCodeClient ? [mcpCodeClient] : [])];
+  const tools = [
+    bash,
+    fileEditor,
+    dateTimeTool,
+    ...(mcpCodeClient ? [mcpCodeClient] : []),
+  ];
 
   const appendSystemPrompt = mcpCodeUrl
     ? `\n${generateMcpCodePromps(mcpCodeUrl)}`
@@ -68,7 +82,7 @@ export function createAgent(
     }),
   });
   agent.addHook(BeforeInvocationEvent, (event) => {
-    logger.info(JSON.stringify(event, null, 2));
+    logger.debug(JSON.stringify(event, null, 2));
   });
 
   agent.addHook(BeforeModelCallEvent, (event) => {
