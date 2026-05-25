@@ -14,8 +14,7 @@ RUN mkdir /app/memory
 # Set all of /app to root:root, read-only for node
 RUN chown -R root:root /app && chmod -R 755 /app
 # Grant node write access ONLY to the specific dirs
-RUN chown node:node /app/mounts && chmod 700 /app/mounts
-RUN chown node:node /app/memory && chmod 700 /app/memory
+RUN chown node:node /app/mounts /app/memory && chmod 700 /app/mounts /app/memory
 
 WORKDIR /app/
 RUN npm ci --only=production
