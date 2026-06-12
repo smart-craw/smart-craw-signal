@@ -4,7 +4,7 @@ services:
     networks:
       - signal-network # to access signal servers
       - agent-internal # so agent can hit this rest api
-    image: bbernhard/signal-cli-rest-api:0.99-rootless
+    image: bbernhard/signal-cli-rest-api:0.100-rootless
     environment:
       - MODE=json-rpc-native #supported modes: json-rpc, native, normal
     volumes:
