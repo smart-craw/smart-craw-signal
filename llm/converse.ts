@@ -20,7 +20,8 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 
 const dateTimeTool = tool({
   name: "current_datetime",
-  description: "Get current date and time",
+  description:
+    "Returns the current date and time in UTC.  Use this tool every time you are prompted for date or time.  Do not use previous responses or context.",
   callback: () => {
     return new Date().toISOString();
   },
