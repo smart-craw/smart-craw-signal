@@ -34,7 +34,7 @@ services:
   code-mcp:
     networks:
       - mcp-internal # private only
-    image: ghcr.io/danielhstahl/mcp-code-execution:v0.1.4
+    image: ghcr.io/danielhstahl/mcp-code-execution:v0.1.5
     user: "appuser:1500" # same group as smart-craw-signal since both read/write to the same directory
     environment:
       HTTP_PROXY: http://squid-proxy:3128
@@ -46,7 +46,7 @@ services:
     networks:
       - agent-internal # so agent can hit internal signal and nginx
       - mcp-internal # so agent can hit code-mcp
-    image: ghcr.io/smart-craw/smart-craw-signal:v0.3.1
+    image: ghcr.io/smart-craw/smart-craw-signal:v0.3.3
     user: "node:1500" # same group as code-mcp since both read/write to the same directory
     volumes:
       - "$HOME/signal/storage:/app/mounts"
