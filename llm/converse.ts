@@ -12,7 +12,7 @@ import {
 } from "@strands-agents/sdk";
 import { OpenAIModel } from "@strands-agents/sdk/models/openai";
 import { logger } from "../logging.ts";
-import { generateMcpCodePromps, SYSTEM_PROMPT } from "./prompt.ts";
+import { SYSTEM_PROMPT } from "./prompt.ts";
 
 import { bash } from "@strands-agents/sdk/vended-tools/bash";
 import { fileEditor } from "@strands-agents/sdk/vended-tools/file-editor";
@@ -63,19 +63,14 @@ export function createAgent(
     ...(mcpCodeClient ? [mcpCodeClient] : []),
   ];
 
-  const appendSystemPrompt = mcpCodeUrl
-    ? `\n${generateMcpCodePromps(mcpCodeUrl)}`
-    : "";
-
   // Create an agent with tools
   const agent = new Agent({
-    systemPrompt: SYSTEM_PROMPT + appendSystemPrompt,
+    systemPrompt: SYSTEM_PROMPT,
     sessionManager: session,
     model,
     printer: false,
     tools,
     id: agentId,
-
     conversationManager: new SummarizingConversationManager({
       summaryRatio: 0.5,
       preserveRecentMessages: 10,
