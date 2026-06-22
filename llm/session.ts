@@ -77,9 +77,9 @@ export const createSessionManager = (
     }
   };
 
-  const startSession = (sessionId: string) => {
+  const startSession = async (sessionId: string) => {
     cancelMessage();
-    agent = createAgent(
+    agent = await createAgent(
       llmUrl,
       sessionId,
       sessionStorageLocation,
@@ -139,7 +139,7 @@ export const createSessionManager = (
     if (sessions.length > 0) {
       currentSessionId = sessions[0].sessionId;
     }
-    startSession(currentSessionId);
+    await startSession(currentSessionId);
   };
 
   return {
