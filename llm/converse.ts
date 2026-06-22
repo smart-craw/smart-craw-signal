@@ -27,7 +27,25 @@ const dateTimeTool = tool({
   },
 });
 
-export function createAgent(
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+async function extractMcpTools(mcpClient: McpClient | undefined) {
+  if (mcpClient === undefined) {
+    return [];
+  } else {
+    return mcpClient.listTools();
+  }
+}
+
+function generateNoRuntimeInstructions(tools: string[]) {
+  const toolNameHint =
+    tools.length > 0 ? `Use one of ${tools.join(", ")} - ` : "";
+  return toolNameHint + "Do not invoke language runtimes directly via bash.";
+}
+
+export async function createAgent(
   llmUrl: string,
   sessionId: string,
   sessionStorageLocation: string, //equivalent to ~/.claude in claude code
@@ -43,25 +61,23 @@ export function createAgent(
     },
   });
 
-  const mcpCodeClient =
-    mcpCodeUrl &&
-    new McpClient({
-      transport: new StreamableHTTPClientTransport(
-        new URL(mcpCodeUrl),
-      ) as McpTransport,
-    });
+  const mcpCodeClient = mcpCodeUrl
+    ? new McpClient({
+        transport: new StreamableHTTPClientTransport(
+          new URL(mcpCodeUrl),
+        ) as McpTransport,
+      })
+    : undefined;
+
+  const mcpTools = await extractMcpTools(mcpCodeClient);
+  const mcpToolNames = mcpTools.map((v) => v.name);
+  const bashInstructions = generateNoRuntimeInstructions(mcpToolNames);
 
   const session = new SessionManager({
     sessionId,
     storage: { snapshot: new FileStorage(sessionStorageLocation) },
   });
-
-  const tools = [
-    bash,
-    fileEditor,
-    dateTimeTool,
-    ...(mcpCodeClient ? [mcpCodeClient] : []),
-  ];
+  const tools = [bash, fileEditor, dateTimeTool, ...mcpTools];
 
   // Create an agent with tools
   const agent = new Agent({
@@ -85,6 +101,15 @@ export function createAgent(
     logger.info(JSON.stringify(event, null, 2));
   });
   agent.addHook(BeforeToolCallEvent, (event) => {
+    if (event.toolUse.name === "bash" && isRecord(event.toolUse.input)) {
+      const { command } = event.toolUse.input;
+      if (
+        typeof command === "string" &&
+        /\b(node|npm|yarn|python3?|pip3?|cargo|rustc)\b/.test(command)
+      ) {
+        event.cancel = bashInstructions;
+      }
+    }
     logger.info(JSON.stringify(event, null, 2));
   });
   return agent;
