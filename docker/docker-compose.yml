@@ -34,7 +34,7 @@ services:
   code-mcp:
     networks:
       - mcp-internal # private only
-    image: ghcr.io/danielhstahl/mcp-code-execution:v0.1.5
+    image: ghcr.io/danielhstahl/mcp-code-execution:v0.1.6
     user: "appuser:1500" # same group as smart-craw-signal since both read/write to the same directory
     environment:
       HTTP_PROXY: http://squid-proxy:3128

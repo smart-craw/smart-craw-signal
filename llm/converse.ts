@@ -12,7 +12,7 @@ import {
 } from "@strands-agents/sdk";
 import { OpenAIModel } from "@strands-agents/sdk/models/openai";
 import { logger } from "../logging.ts";
-import { SYSTEM_PROMPT } from "./prompt.ts";
+import { getSystemPrompt } from "./prompt.ts";
 
 import { bash } from "@strands-agents/sdk/vended-tools/bash";
 import { fileEditor } from "@strands-agents/sdk/vended-tools/file-editor";
@@ -48,6 +48,7 @@ function generateNoRuntimeInstructions(tools: string[]) {
 export async function createAgent(
   llmUrl: string,
   sessionId: string,
+  sessionDirectory: string, //where agent should store its files
   sessionStorageLocation: string, //equivalent to ~/.claude in claude code
   agentId: string,
   mcpCodeUrl?: string,
@@ -81,7 +82,7 @@ export async function createAgent(
 
   // Create an agent with tools
   const agent = new Agent({
-    systemPrompt: SYSTEM_PROMPT,
+    systemPrompt: getSystemPrompt(sessionDirectory),
     sessionManager: session,
     model,
     printer: false,

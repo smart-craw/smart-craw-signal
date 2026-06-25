@@ -5,6 +5,7 @@ import { randomUUID } from "node:crypto";
 import { logger } from "../logging.ts";
 import { createAgent } from "./converse.ts";
 import { Agent } from "@strands-agents/sdk";
+import { mkdir } from "node:fs/promises";
 import { handleLLMResponse } from "./response.ts";
 
 export type SessionManager = ReturnType<typeof createSessionManager>;
@@ -13,7 +14,7 @@ export const createSessionManager = (
   llmUrl: string,
   sessionStorageLocation: string,
   onComplete: (fullMessage: string, isError: boolean) => void,
-  workingDirectory?: string,
+  workingDirectory: string,
   mcpCodeUrl?: string,
   agentId?: string,
 ) => {
@@ -23,14 +24,12 @@ export const createSessionManager = (
   const queue: string[] = [];
   let running = false;
 
-  if (workingDirectory) {
-    const absoluteWorkingDirectory = path.isAbsolute(workingDirectory)
-      ? workingDirectory
-      : path.join(cwd(), workingDirectory);
-    //tools adopt the process.cwd()
-    logger.info(`Working directory is ${absoluteWorkingDirectory}`);
-    chdir(absoluteWorkingDirectory);
-  }
+  const absoluteWorkingDirectory = path.isAbsolute(workingDirectory)
+    ? workingDirectory
+    : path.join(cwd(), workingDirectory);
+  //tools adopt the process.cwd()
+  logger.info(`Working directory is ${absoluteWorkingDirectory}`);
+  chdir(absoluteWorkingDirectory);
 
   // while in theory no messages will arrive while
   // previous response is still running, this ensures that
@@ -59,15 +58,15 @@ export const createSessionManager = (
     return currentSessionId;
   };
 
-  const setSessionId = (sessionId: string) => {
+  const setSessionId = async (sessionId: string) => {
     currentSessionId = sessionId;
-    startSession(sessionId);
+    await startSession(sessionId);
     return currentSessionId;
   };
 
-  const newSession = () => {
+  const newSession = async () => {
     currentSessionId = randomUUID();
-    startSession(currentSessionId);
+    await startSession(currentSessionId);
     return currentSessionId;
   };
 
@@ -78,10 +77,14 @@ export const createSessionManager = (
   };
 
   const startSession = async (sessionId: string) => {
+    const sessionDirectory = path.join(absoluteWorkingDirectory, sessionId);
+    //does not error if directory already exists
+    await mkdir(sessionDirectory, { recursive: true });
     cancelMessage();
     agent = await createAgent(
       llmUrl,
       sessionId,
+      sessionDirectory,
       sessionStorageLocation,
       localAgentId,
       mcpCodeUrl,
