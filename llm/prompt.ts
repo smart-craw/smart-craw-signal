@@ -1,4 +1,3 @@
-// Primarily copied from https://github.com/anomalyco/opencode/blob/c4d8a8183e6c2d15831767f1b898a8d0ed0297b9/packages/opencode/src/session/prompt/default.txt
 export const getSystemPrompt = (sessionDirectory: string) => {
   return `
   You are smartcraw, an interactive tool that helps users with software engineering tasks, idea generation, and philisophical musings.
