@@ -18,7 +18,7 @@ import { createSessionManager } from "./llm/session.ts";
 const startThink = process.env.START_THINK_TOKEN || "<think>";
 const endThink = process.env.END_THINK_TOKEN || "</think>";
 const adminNumber = `+1${process.env.SIGNAL_USER_ADMIN_NUMBER}`;
-const workingDirectory = process.env.AGENT_CWD;
+const workingDirectory = process.env.AGENT_CWD || cwd();
 const sessionDirectory =
   process.env.SESSION_DIRECTORY || path.join(cwd(), "./sessions");
 const signalUrl = process.env.SIGNAL_REST_ENDPOINT || "http://localhost:9001";
@@ -86,7 +86,7 @@ bot.addCommand({
   description: "Create new session",
   adminOnly: true,
   handler: async () => {
-    const sessionId = sessionManager.newSession();
+    const sessionId = await sessionManager.newSession();
     return `New session created: ${sessionId}`;
   },
 });
@@ -129,7 +129,7 @@ bot.addCommand({
     try {
       const index = parseInt(sessionIndex);
       const { sessionId } = sessions[index];
-      sessionManager.setSessionId(sessionId);
+      await sessionManager.setSessionId(sessionId);
       return `New session set: ${sessionId}`;
     } catch (err) {
       const error = err as Error;
