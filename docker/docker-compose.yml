@@ -3,7 +3,7 @@ services:
     ports: [] # no host ports needed
     networks:
       - signal-network # to access signal servers
-      - agent-internal # so agent can hit this rest api
+      - signal-internal # so agent can hit this rest api
     image: bbernhard/signal-cli-rest-api:0.100-rootless
     environment:
       - MODE=json-rpc-native #supported modes: json-rpc, native, normal
@@ -26,10 +26,11 @@ services:
     ports: [] # no host ports needed
     image: ghcr.io/smart-craw/smart-craw-signal-nginx:v0.2.2
     networks:
-      - agent-internal # reachable by agent
+      - agent-internal # reachable by agent (OPTIONAL)
+      - signal-internal # reachable by signal
       - public-outbound # so this can hit host network
     environment:
-      BACKEND_SERVICE: [your_anthropic_base_url_with_port]
+      BACKEND_SERVICE: [your_openai_base_url_with_port]
 
   code-mcp:
     networks:
@@ -44,7 +45,7 @@ services:
 
   smart-craw-signal:
     networks:
-      - agent-internal # so agent can hit internal signal and nginx
+      - signal-internal # so agent can hit internal signal and nginx
       - mcp-internal # so agent can hit code-mcp
     image: ghcr.io/smart-craw/smart-craw-signal:v0.3.4
     user: "node:1500" # same group as code-mcp since both read/write to the same directory
@@ -64,12 +65,45 @@ services:
     depends_on:
       signal-cli-rest-api:
         condition: service_healthy
+
+  # Optional.  Add Bot factory from smart-craw https://github.com/smart-craw/smart-craw
+  smart-craw-ui:
+    ports:
+      - "8080:80"
+      - "8081:443"
+    networks:
+      - public-outbound # so this can be hit by the host network
+      - agent-internal # so can hit smart-craw-agent
+    image: ghcr.io/smart-craw/smart-craw-ui:v0.2.9
+    environment:
+      AGENT_SERVICE: http://smart-craw-agent:8000
+      ALLOWED_IP_ADDRESS: [yourinternalclient]
+    volumes:
+      - "path/to/your/certs:/etc/nginx/certs"
+
+  # Optional.  Add Bot factory from smart-craw https://github.com/smart-craw/smart-craw
+  smart-craw-agent:
+    networks:
+      - agent-internal # isolate
+    image: ghcr.io/smart-craw/smart-craw-agent:v0.2.9
+    environment:
+      OPEN_API_COMPATIBLE_ENDPOINT: http://nginx:8080
+      START_THINK_TOKEN: "<|channel>"
+      END_THINK_TOKEN: "<channel|>"
+    volumes:
+      - "path/to/your/db:/app/db"
+      - "path/to/your/bots:/app/bots"
+      - "path/to/your/memory:/app/memory"
+
 networks:
   signal-network:
     driver: bridge
   public-outbound:
     driver: bridge
-  agent-internal:
+  signal-internal:
     internal: true
   mcp-internal:
+    internal: true
+  # Optional.  Add Bot factory from smart-craw https://github.com/smart-craw/smart-craw
+  agent-internal:
     internal: true
