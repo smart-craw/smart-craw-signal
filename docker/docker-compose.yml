@@ -26,7 +26,7 @@ services:
     ports: [] # no host ports needed
     image: ghcr.io/smart-craw/smart-craw-signal-nginx:v0.2.2
     networks:
-      - agent-internal # reachable by agent (OPTIONAL)
+      - agent-internal # reachable by (OPTIONAL) agent.  If you don't use the agent, don't use this network
       - signal-internal # reachable by signal
       - public-outbound # so this can hit host network
     environment:
@@ -35,7 +35,7 @@ services:
   code-mcp:
     networks:
       - mcp-internal # private only
-    image: ghcr.io/danielhstahl/mcp-code-execution:v0.1.6
+    image: ghcr.io/danielhstahl/mcp-code-execution:v0.2.0
     user: "appuser:1500" # same group as smart-craw-signal since both read/write to the same directory
     environment:
       HTTP_PROXY: http://squid-proxy:3128

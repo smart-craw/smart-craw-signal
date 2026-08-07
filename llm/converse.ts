@@ -1,6 +1,5 @@
 import {
   Agent,
-  FileStorage,
   McpClient,
   type McpTransport,
   SessionManager,
@@ -16,7 +15,8 @@ import { getSystemPrompt } from "./prompt.ts";
 
 import { bash } from "@strands-agents/sdk/vended-tools/bash";
 import { fileEditor } from "@strands-agents/sdk/vended-tools/file-editor";
-import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
+import { LocalFileStorage } from "@strands-agents/sdk/storage";
 
 const dateTimeTool = tool({
   name: "current_datetime",
@@ -76,7 +76,7 @@ export async function createAgent(
 
   const session = new SessionManager({
     sessionId,
-    storage: { snapshot: new FileStorage(sessionStorageLocation) },
+    storage: new LocalFileStorage(sessionStorageLocation),
   });
   const tools = [bash, fileEditor, dateTimeTool, ...mcpTools];
 
